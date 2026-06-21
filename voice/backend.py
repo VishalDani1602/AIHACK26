@@ -19,7 +19,7 @@ from typing import Dict
 import httpx
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from agents.common import claude_llm, config, store
@@ -131,6 +131,43 @@ async def run_orchestrator(session_id: str, text: str, insurance: str = "") -> d
 @app.get("/")
 async def index():
     return FileResponse(STATIC_DIR / "index.html")
+
+
+_PAID_PAGE = """<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Payment received — CareLoop</title>
+<style>
+ body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f6f8f6;
+   font-family:ui-sans-serif,-apple-system,Segoe UI,Roboto,sans-serif;color:#18211c}
+ .box{max-width:420px;text-align:center;background:#fff;border:1px solid #d9e0dc;border-radius:12px;
+   padding:28px 26px;box-shadow:0 18px 50px rgba(34,48,39,.08)}
+ .mark{width:54px;height:54px;border-radius:50%;background:#1f7a58;color:#fff;display:grid;place-items:center;
+   font-size:28px;margin:0 auto 14px}
+ h1{font-size:20px;margin:0 0 8px} p{color:#68756e;font-size:14px;line-height:1.5;margin:0}
+ .small{margin-top:14px;font-size:12px;color:#8aa0b6}
+</style></head><body>
+<div class="box">
+  <div class="mark">✓</div>
+  <h1>Payment received</h1>
+  <p>Returning you to CareLoop — your appointment is being confirmed in the original tab.
+     You can close this window.</p>
+  <p class="small" id="s">Notifying CareLoop…</p>
+</div>
+<script>
+  var sid = new URLSearchParams(location.search).get("sid") || "";
+  var payload = {type:"paid", sid:sid, t:Date.now()};
+  try { var ch = new BroadcastChannel("careloop-pay"); ch.postMessage(payload); } catch(e){}
+  try { localStorage.setItem("careloop_paid", JSON.stringify(payload)); } catch(e){}
+  document.getElementById("s").textContent = "CareLoop notified — you can close this tab.";
+  setTimeout(function(){ try{ window.close(); }catch(e){} }, 1200);
+</script>
+</body></html>"""
+
+
+@app.get("/paid")
+async def paid_page():
+    """Stripe success redirect: signal the original CareLoop tab to auto-continue."""
+    return HTMLResponse(_PAID_PAGE)
 
 
 @app.get("/api/health")

@@ -32,7 +32,7 @@ async def handle_link(ctx: Context, sender: str, msg: PaymentLinkRequest):
         await ctx.send(sender, PaymentLinkResult(session_id=msg.session_id, enabled=False))
         return
     try:
-        sid, url = stripe_pay.create_checkout(msg.amount_usd, msg.description)
+        sid, url = stripe_pay.create_checkout(msg.amount_usd, msg.description, msg.session_id)
         ctx.logger.info(f"payment[{msg.session_id}] checkout {sid} for ${msg.amount_usd}")
         await ctx.send(sender, PaymentLinkResult(
             session_id=msg.session_id, enabled=True, checkout_url=url,

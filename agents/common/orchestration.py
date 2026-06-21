@@ -606,7 +606,7 @@ class LocalSpecialists:
         if not stripe_pay.enabled():
             return PaymentLinkResult(session_id=req.session_id, enabled=False)
         try:
-            sid, url = stripe_pay.create_checkout(req.amount_usd, req.description)
+            sid, url = stripe_pay.create_checkout(req.amount_usd, req.description, req.session_id)
             return PaymentLinkResult(session_id=req.session_id, enabled=True,
                                      checkout_url=url, stripe_session_id=sid, amount_usd=req.amount_usd)
         except Exception:

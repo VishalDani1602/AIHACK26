@@ -659,3 +659,26 @@ async function pollStats() {
 }
 pollStats();
 setInterval(pollStats, 4000);
+
+// --- Auto-continue after Stripe payment -------------------------------------
+// The Stripe success page (/paid) opens in a new tab and broadcasts here so the
+// ORIGINAL chat continues automatically (books the appointment) — no manual "done".
+let _paidHandled = "";
+function continueAfterPayment(sid) {
+  if (sid && sid !== sessionId) return;            // signal for a different conversation
+  if (sid && sid === _paidHandled) return;         // already handled this one
+  if (typeof busy !== "undefined" && busy) { setTimeout(() => continueAfterPayment(sid), 1200); return; }
+  _paidHandled = sid || sessionId;
+  setStatus("Payment received — confirming your booking…");
+  textInput.value = "done";
+  sendText();
+}
+try {
+  const payCh = new BroadcastChannel("careloop-pay");
+  payCh.onmessage = (e) => { if (e.data && e.data.type === "paid") continueAfterPayment(e.data.sid); };
+} catch (e) { /* BroadcastChannel unsupported */ }
+window.addEventListener("storage", (e) => {
+  if (e.key === "careloop_paid" && e.newValue) {
+    try { const p = JSON.parse(e.newValue); if (p.type === "paid") continueAfterPayment(p.sid); } catch (_) {}
+  }
+});

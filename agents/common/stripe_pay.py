@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import os
 from typing import Optional, Tuple
+from urllib.parse import quote
 
 from dotenv import load_dotenv
 
@@ -19,8 +20,8 @@ load_dotenv()
 
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "").strip()
 DEPOSIT_USD = float(os.getenv("CARELOOP_DEPOSIT_USD", "25"))
-SUCCESS_URL = os.getenv("CARELOOP_SUCCESS_URL", "http://127.0.0.1:8080/?paid=1")
-CANCEL_URL = os.getenv("CARELOOP_CANCEL_URL", "http://127.0.0.1:8080/?canceled=1")
+BASE_URL = os.getenv("CARELOOP_BASE_URL", "http://127.0.0.1:8080").rstrip("/")
+CANCEL_URL = os.getenv("CARELOOP_CANCEL_URL", f"{BASE_URL}/?canceled=1")
 
 _stripe = None
 if STRIPE_SECRET_KEY:
@@ -37,10 +38,17 @@ def enabled() -> bool:
     return _stripe is not None
 
 
-def create_checkout(amount_usd: float, description: str) -> Tuple[str, str]:
-    """Create a hosted Stripe Checkout session. Returns (stripe_session_id, url)."""
+def create_checkout(amount_usd: float, description: str, session_id: str = "") -> Tuple[str, str]:
+    """Create a hosted Stripe Checkout session. Returns (stripe_session_id, url).
+
+    success_url points at /paid?sid=<frontend session> so the success page can
+    signal the original CareLoop tab to auto-continue (book) without the user
+    typing "done".
+    """
     if not _stripe:
         raise RuntimeError("Stripe not configured (STRIPE_SECRET_KEY missing)")
+    sid = quote((session_id or "").split(":")[-1])  # drop "voice:" prefix -> frontend session id
+    success_url = f"{BASE_URL}/paid?sid={sid}" if sid else f"{BASE_URL}/paid"
     session = _stripe.checkout.Session.create(
         mode="payment",
         line_items=[
@@ -53,7 +61,7 @@ def create_checkout(amount_usd: float, description: str) -> Tuple[str, str]:
                 "quantity": 1,
             }
         ],
-        success_url=SUCCESS_URL,
+        success_url=success_url,
         cancel_url=CANCEL_URL,
         metadata={"product": "careloop_booking_deposit"},
     )

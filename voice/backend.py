@@ -22,7 +22,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from agents.common import store
+from agents.common import config, store
 from agents.common.orchestration import LocalSpecialists, handle_turn, new_state
 
 load_dotenv()
@@ -126,6 +126,70 @@ async def health():
 async def stats():
     """Live Redis-backed counters + recent audit-trail events (beyond caching)."""
     return {"redis": store.enabled(), "stats": store.get_stats(), "recent": store.recent_audit(8)}
+
+
+# --- Project dashboard ------------------------------------------------------ #
+_AGENT_META = [
+    ("orchestrator", "ASI:One brain — chat protocol + voice REST", "orchestrator"),
+    ("triage", "Urgency + specialty, 911 red-flag rules", "triage"),
+    ("provider", "Real providers via CMS NPPES", "provider"),
+    ("cost", "Plan-aware out-of-pocket estimate", "cost"),
+    ("scheduler", "Confirmation + iCalendar invite", "scheduler"),
+    ("payment", "Stripe deposit + server-side verify", "payment"),
+    ("evidence", "Clinical trials + drug safety", "evidence"),
+]
+
+_STACK = [
+    {"group": "Fetch.ai", "items": [
+        {"name": "uAgents", "detail": "7-agent mesh · mailbox · Almanac"},
+        {"name": "Agent Chat Protocol", "detail": "ASI:One discoverability"},
+        {"name": "ASI:One LLM", "detail": "intent + triage reasoning"},
+        {"name": "Payment Protocol", "detail": "agent transaction"}]},
+    {"group": "Deepgram", "items": [
+        {"name": "Nova-3 STT", "detail": "multilingual speech-to-text"},
+        {"name": "Aura-2 TTS", "detail": "spoken replies"}]},
+    {"group": "Redis", "items": [
+        {"name": "Cache", "detail": "provider + triage + trials"},
+        {"name": "Streams", "detail": "healthcare audit trail"},
+        {"name": "Sessions + Stats", "detail": "TTL state + live counters"}]},
+    {"group": "Stripe", "items": [
+        {"name": "Checkout", "detail": "refundable deposit (test mode)"}]},
+    {"group": "Live data", "items": [
+        {"name": "CMS NPPES", "detail": "real US providers"},
+        {"name": "ClinicalTrials.gov", "detail": "recruiting trials"},
+        {"name": "openFDA", "detail": "drug-safety labels"}]},
+    {"group": "Anthropic", "items": [
+        {"name": "Claude Code", "detail": "built with"}]},
+]
+
+
+@app.get("/dashboard")
+async def dashboard_page():
+    return FileResponse(STATIC_DIR / "dashboard.html")
+
+
+@app.get("/api/dashboard")
+async def dashboard_data():
+    import socket
+    agents = []
+    for name, role, key in _AGENT_META:
+        port = config.PORTS[key]
+        s = socket.socket()
+        s.settimeout(0.3)
+        online = s.connect_ex(("127.0.0.1", port)) == 0
+        s.close()
+        agents.append({"name": name, "role": role, "port": port,
+                       "address": config.ADDRESSES.get(key, ""), "online": online})
+    return {
+        "project": {"name": "CareLoop",
+                    "tagline": "Voice-first, multi-agent healthcare-access concierge",
+                    "repo": "https://github.com/VishalDani1602/AIHACK26"},
+        "agents": agents,
+        "stack": _STACK,
+        "redis": {"enabled": store.enabled(), "stats": store.get_stats()},
+        "audit": store.recent_audit(12),
+        "health": {"deepgram": bool(DEEPGRAM_API_KEY), "redis": store.enabled()},
+    }
 
 
 @app.post("/api/text")

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CareLoop — Project Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <style>
+    .dash { width: min(100% - 28px, 1080px); margin: 0 auto; padding: 24px 0 40px; }
+    .dash-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+    .dash-head h1 { margin: 0; font-size: 22px; }
+    .dash-head .tag { margin: 4px 0 0; color: var(--muted, #68756e); font-size: 13px; }
+    .live { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--muted, #68756e);
+            border: 1px solid var(--line, #d9e0dc); background: var(--paper, #fff); border-radius: 999px; padding: 6px 12px; }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: #c0392b; display: inline-block; }
+    .dot.ok { background: var(--accent, #1f7a58); box-shadow: 0 0 0 0 rgba(31,122,88,.5); animation: lp 1.6s infinite; }
+    @keyframes lp { 0%{box-shadow:0 0 0 0 rgba(31,122,88,.45)} 70%{box-shadow:0 0 0 7px rgba(31,122,88,0)} 100%{box-shadow:0 0 0 0 rgba(31,122,88,0)} }
+    .section-title { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted, #68756e); margin: 24px 0 10px; }
+    .grid { display: grid; gap: 12px; }
+    .kpis { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+    .card { background: var(--paper, #fff); border: 1px solid var(--line, #d9e0dc); border-radius: var(--radius, 8px);
+            padding: 14px 16px; box-shadow: var(--shadow, 0 12px 36px rgba(34,48,39,.07)); }
+    .kpi .v { font-size: 30px; font-weight: 800; color: var(--ink, #18211c); line-height: 1.1; }
+    .kpi .k { font-size: 12px; color: var(--muted, #68756e); margin-top: 6px; }
+    .kpi.alert .v { color: var(--emergency, #b42318); }
+    .agents { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+    .agent { display: flex; flex-direction: column; gap: 6px; }
+    .agent .top { display: flex; align-items: center; gap: 8px; }
+    .agent .name { font-weight: 700; color: var(--ink, #18211c); }
+    .agent .role { font-size: 12.5px; color: var(--muted, #68756e); }
+    .agent a { font-size: 11px; color: var(--accent, #1f7a58); font-family: ui-monospace, Menlo, monospace; text-decoration: none; word-break: break-all; }
+    .agent a:hover { text-decoration: underline; }
+    .stack { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+    .stack h3 { margin: 0 0 8px; font-size: 14px; color: var(--accent, #1f7a58); }
+    .chip { display: block; font-size: 12.5px; color: var(--ink, #18211c); padding: 3px 0; }
+    .chip span { color: var(--muted, #68756e); }
+    .audit { max-height: 320px; overflow-y: auto; }
+    .ev { display: flex; gap: 10px; align-items: baseline; padding: 7px 0; border-bottom: 1px dashed var(--line, #d9e0dc); font-size: 13px; }
+    .ev:last-child { border-bottom: 0; }
+    .ev .badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap;
+                 background: var(--accent-soft, #e4f1eb); color: var(--accent, #1f7a58); }
+    .ev .badge.emergency { background: var(--emergency-soft, #fff1ef); color: var(--emergency, #b42318); }
+    .ev .meta { color: var(--muted, #68756e); font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; }
+    .links a { color: var(--accent, #1f7a58); }
+    .muted { color: var(--muted, #68756e); font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="dash">
+    <div class="dash-head">
+      <div>
+        <h1>⊕ CareLoop — Project Dashboard</h1>
+        <p class="tag" id="tagline"></p>
+      </div>
+      <span class="live"><span class="dot" id="liveDot"></span><span id="liveText">connecting…</span></span>
+    </div>
+
+    <div class="section-title">Live activity</div>
+    <div class="grid kpis" id="kpis"></div>
+
+    <div class="section-title">Agents <span class="muted" id="agentsUp"></span></div>
+    <div class="grid agents" id="agents"></div>
+
+    <div class="section-title">Technology &amp; sponsors</div>
+    <div class="grid stack" id="stack"></div>
+
+    <div class="section-title">Audit trail <span class="muted">(Redis Streams · most recent)</span></div>
+    <div class="card audit" id="audit"></div>
+
+    <p class="muted links" style="margin-top:18px">
+      Voice app: <a href="/">/</a> &nbsp;·&nbsp; Repo: <a id="repo" href="#" target="_blank">GitHub</a>
+      &nbsp;·&nbsp; auto-refreshing every 3s
+    </p>
+  </div>
+  <script src="/static/dashboard.js"></script>
+</body>
+</html>

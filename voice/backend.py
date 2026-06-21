@@ -22,6 +22,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from agents.common import store
 from agents.common.orchestration import LocalSpecialists, handle_turn, new_state
 
 load_dotenv()
@@ -102,10 +103,11 @@ async def run_orchestrator(session_id: str, text: str) -> dict:
             return {"reply": d.get("reply", ""), "stage": d.get("stage", ""),
                     "emergency": bool(d.get("emergency", False)), "via": "agent-mesh"}
     except Exception:
-        state = _LOCAL_SESSIONS.get(session_id) or new_state()
+        state = store.session_get(session_id) or _LOCAL_SESSIONS.get(session_id) or new_state()
         state["session_id"] = session_id
         out = await handle_turn(state, text, _LOCAL)
         _LOCAL_SESSIONS[session_id] = state
+        store.session_set(session_id, state)
         return {**out, "via": "local-fallback"}
 
 
@@ -117,7 +119,13 @@ async def index():
 @app.get("/api/health")
 async def health():
     return {"deepgram_key": bool(DEEPGRAM_API_KEY), "orchestrator_url": ORCH_URL,
-            "stt_model": DG_STT_MODEL, "tts_model": DG_TTS_MODEL}
+            "stt_model": DG_STT_MODEL, "tts_model": DG_TTS_MODEL, "redis": store.enabled()}
+
+
+@app.get("/api/stats")
+async def stats():
+    """Live Redis-backed counters + recent audit-trail events (beyond caching)."""
+    return {"redis": store.enabled(), "stats": store.get_stats(), "recent": store.recent_audit(8)}
 
 
 @app.post("/api/text")

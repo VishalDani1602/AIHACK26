@@ -15,7 +15,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-from . import asi
+from . import asi, store
 from .models import Provider, TriageResult
 from .prompts import ALLOWED_SPECIALTIES, TRIAGE_SYSTEM
 
@@ -91,22 +91,36 @@ def triage(session_id: str, symptoms: str, patient_age=None) -> TriageResult:
             emergency=True,
         )
 
-    data = asi.chat_json(
-        TRIAGE_SYSTEM,
-        f"Patient age: {patient_age or 'unknown'}\nConcern: {symptoms}",
-    )
-    if data and data.get("recommended_specialty"):
-        specialty = data.get("recommended_specialty", "Primary Care")
-        if specialty not in ALLOWED_SPECIALTIES:
-            specialty = "Primary Care"
-        urgency = data.get("urgency", "routine")
-        advice = data.get("advice", "")
-        llm_flags = data.get("red_flags", []) or []
+    # Shared Redis cache: identical symptoms skip the ASI:One call (saves latency + tokens).
+    cache_key = "triage:" + store.hash_key(symptoms.lower().strip(), patient_age or "")
+    cached = store.cache_get_json(cache_key)
+    if cached:
+        store.incr_stat("triage_cache_hit")
+        specialty = cached["specialty"]
+        urgency = cached["urgency"]
+        advice = cached["advice"]
+        llm_flags = cached.get("red_flags", [])
     else:
-        specialty = _heuristic_specialty(symptoms)
-        urgency = "routine"
-        advice = "Based on what you've shared, a visit with the right clinician is a good next step."
-        llm_flags = []
+        data = asi.chat_json(
+            TRIAGE_SYSTEM,
+            f"Patient age: {patient_age or 'unknown'}\nConcern: {symptoms}",
+        )
+        if data and data.get("recommended_specialty"):
+            specialty = data.get("recommended_specialty", "Primary Care")
+            if specialty not in ALLOWED_SPECIALTIES:
+                specialty = "Primary Care"
+            urgency = data.get("urgency", "routine")
+            advice = data.get("advice", "")
+            llm_flags = data.get("red_flags", []) or []
+        else:
+            specialty = _heuristic_specialty(symptoms)
+            urgency = "routine"
+            advice = "Based on what you've shared, a visit with the right clinician is a good next step."
+            llm_flags = []
+        store.incr_stat("triage_llm_call")
+        store.cache_set_json(cache_key, {
+            "specialty": specialty, "urgency": urgency,
+            "advice": advice, "red_flags": llm_flags}, ttl=3600)
 
     specialty, taxonomy = _specialty_to_taxonomy(specialty)
     emergency = urgency == "emergency"

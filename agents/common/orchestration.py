@@ -10,7 +10,7 @@ from __future__ import annotations
 import re
 from typing import Dict, Optional, Protocol
 
-from . import asi, logic, stripe_pay
+from . import asi, logic, store, stripe_pay
 from .models import (
     BookingRequest,
     BookingResult,
@@ -193,9 +193,13 @@ async def handle_turn(state: Dict, user_text: str, specialists: Specialists) -> 
 
     if tri.emergency:
         state["stage"] = "emergency"
+        store.audit("emergency", {"session": session_id, "red_flags": tri.red_flags})
+        store.incr_stat("emergencies")
         flags = f" ({', '.join(tri.red_flags)})" if tri.red_flags else ""
         return _out(state, f"{EMERGENCY_BANNER}{flags}\n\n{tri.advice}", "emergency", emergency=True)
 
+    store.audit("triage", {"session": session_id, "urgency": tri.urgency,
+                           "specialty": tri.recommended_specialty})
     state["specialty"] = tri.recommended_specialty
     state["taxonomy"] = tri.taxonomy
 
@@ -269,6 +273,10 @@ async def _proceed_after_confirm(state: Dict, specialists: Specialists) -> Dict:
         "checkout_url": plr.checkout_url,
         "amount": plr.amount_usd,
     }
+    store.audit("payment_requested", {"session": state.get("session_id", ""),
+                                      "amount": str(plr.amount_usd),
+                                      "stripe_session": plr.stripe_session_id})
+    store.incr_stat("payments_requested")
     reply = (
         f"Almost done. To hold your appointment, please pay a **refundable ${plr.amount_usd:.0f} deposit** "
         f"(applied to your visit) on this secure Stripe page:\n\n{plr.checkout_url}\n\n"
@@ -286,6 +294,9 @@ async def _verify_and_book(state: Dict, specialists: Specialists) -> Dict:
     ))
     if vr and vr.paid:
         state["deposit_paid"] = pay.get("amount", 0.0)
+        store.audit("payment_paid", {"session": state.get("session_id", ""),
+                                     "amount": str(pay.get("amount", 0.0))})
+        store.incr_stat("payments_paid")
         return await _do_booking(state, specialists)
     status = vr.status if vr else "unknown"
     return _out(state,
@@ -307,6 +318,10 @@ async def _do_booking(state: Dict, specialists: Specialists) -> Dict:
         return _out(state, "I hit a snag booking that. Want me to try again?", "confirming")
     state["stage"] = "done"
     state["last_booking_ics"] = br.ics
+    store.audit("booking_confirmed", {"session": state.get("session_id", ""),
+                                      "provider": prov["name"],
+                                      "confirmation": br.confirmation_code})
+    store.incr_stat("bookings")
     deposit_note = ""
     if state.get("deposit_paid"):
         deposit_note = f" Your ${state['deposit_paid']:.0f} refundable deposit was received (applied to your visit)."

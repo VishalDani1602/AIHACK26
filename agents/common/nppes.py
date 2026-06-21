@@ -14,6 +14,7 @@ from typing import List
 
 import requests
 
+from . import store
 from .models import Provider
 
 NPPES_URL = "https://npiregistry.cms.hhs.gov/api/"
@@ -57,11 +58,19 @@ def search_providers(
     postal_code: str = "",
     insurance: str = "",
     limit: int = 3,
+    cache_ttl: int = 3600,
 ) -> List[Provider]:
     """Query NPPES; return up to `limit` normalized Provider records.
 
     Raises requests exceptions on network failure (caller decides on fallback).
+    Results are cached in Redis (shared across all agent processes) for `cache_ttl`.
     """
+    cache_key = "nppes:" + store.hash_key(taxonomy.lower(), city.lower(), state.lower(), postal_code, limit)
+    cached = store.cache_get_json(cache_key)
+    if cached is not None:
+        store.incr_stat("nppes_cache_hit")
+        return [Provider(**p) for p in cached]
+
     params = {
         "version": "2.1",
         "taxonomy_description": taxonomy,
@@ -121,6 +130,9 @@ def search_providers(
         if len(providers) >= limit:
             break
 
+    store.incr_stat("nppes_api_call")
+    if providers:
+        store.cache_set_json(cache_key, [p.dict() for p in providers], ttl=cache_ttl)
     return providers
 
 

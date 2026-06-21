@@ -19,7 +19,7 @@ from typing import Dict
 import httpx
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from agents.common import config, store
@@ -100,8 +100,14 @@ async def run_orchestrator(session_id: str, text: str) -> dict:
             r = await client.post(ORCH_URL, json={"session_id": session_id, "text": text})
             r.raise_for_status()
             d = r.json()
-            return {"reply": d.get("reply", ""), "stage": d.get("stage", ""),
-                    "emergency": bool(d.get("emergency", False)), "via": "agent-mesh"}
+            return {
+                "reply": d.get("reply", ""),
+                "stage": d.get("stage", ""),
+                "emergency": bool(d.get("emergency", False)),
+                "card": d.get("card"),
+                "actions": d.get("actions"),
+                "via": "agent-mesh",
+            }
     except Exception:
         state = store.session_get(session_id) or _LOCAL_SESSIONS.get(session_id) or new_state()
         state["session_id"] = session_id
@@ -126,6 +132,19 @@ async def health():
 async def stats():
     """Live Redis-backed counters + recent audit-trail events (beyond caching)."""
     return {"redis": store.enabled(), "stats": store.get_stats(), "recent": store.recent_audit(8)}
+
+
+@app.get("/api/ics/{session_id}")
+async def calendar_invite(session_id: str):
+    state = store.session_get(session_id) or _LOCAL_SESSIONS.get(session_id) or {}
+    ics = state.get("last_booking_ics", "")
+    if not ics:
+        return JSONResponse({"error": "calendar invite not found"}, status_code=404)
+    return Response(
+        ics,
+        media_type="text/calendar",
+        headers={"Content-Disposition": f'attachment; filename="careloop-{session_id}.ics"'},
+    )
 
 
 # --- Project dashboard ------------------------------------------------------ #

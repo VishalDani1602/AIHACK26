@@ -33,8 +33,8 @@ function addMessage(role, text, opts = {}) {
   const wrap = document.createElement("div");
   wrap.className = "msg " + role + (opts.emergency ? " emergency" : "");
   const bubble = document.createElement("div");
-  bubble.className = "bubble";
-  bubble.innerHTML = opts.emergency ? renderEmergency(text) : render(text);
+  bubble.className = "bubble" + (opts.rich ? " rich-bubble" : "");
+  bubble.innerHTML = opts.emergency ? renderEmergency(text) : renderMessageBody(text, opts);
   wrap.appendChild(bubble);
   chat.appendChild(wrap);
   chat.scrollTop = chat.scrollHeight;
@@ -57,11 +57,18 @@ function addThinkingBubble() {
 
 // Minimal markdown: **bold**, clickable links, and newlines.
 function render(t) {
-  const esc = t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  return esc
+  return escapeHtml(t)
     .replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")
     .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>')
     .replace(/\n/g, "<br>");
+}
+
+function renderMessageBody(text, opts = {}) {
+  const cardsHtml = opts.cards?.length ? `<div class="card-stack">${opts.cards.map(renderCard).join("")}</div>` : "";
+  const actionsHtml = opts.actions?.length ? renderActions(opts.actions) : "";
+  if (!cardsHtml && !actionsHtml) return render(text);
+  const summary = cardsHtml ? `<details class="reply-details"><summary>Conversation note</summary>${render(text)}</details>` : render(text);
+  return `${summary}${cardsHtml}${actionsHtml}`;
 }
 
 function setStatus(s) { statusEl.textContent = s; }
@@ -84,7 +91,7 @@ async function sendTurn(promise, opts = {}) {
     thinking.remove();
     if (data.error) { setStatus("Warning: " + data.error); return; }
     if (data.transcript && data.transcript !== opts.userText) addMessage("user", data.transcript);
-    addMessage("bot", data.reply, { emergency: data.emergency });
+    addBotReply(data);
     setEmergencyFocus(Boolean(data.emergency));
     viaEl.textContent = data.via ? "routed via: " + data.via : "";
     playAudio(data.audio);
@@ -96,6 +103,16 @@ async function sendTurn(promise, opts = {}) {
     busy = false;
     micBtn.classList.remove("disabled");
   }
+}
+
+function addBotReply(data) {
+  if (data.emergency) {
+    addMessage("bot", data.reply, { emergency: true });
+    return;
+  }
+  const cards = collectCards(data);
+  const actions = normalizeActions(data.actions) || inferActions(data, cards);
+  addMessage("bot", data.reply, { cards, actions, rich: Boolean(cards.length || actions.length) });
 }
 
 function renderEmergency(text) {
@@ -112,6 +129,221 @@ function renderEmergency(text) {
   `;
 }
 
+function collectCards(data) {
+  if (data.card) return [data.card];
+  return [
+    inferProviderCard(data.reply, data.stage),
+    inferEvidenceCard(data.reply),
+    inferPaymentCard(data.reply, data.stage),
+    inferBookingCard(data.reply, data.stage),
+  ].filter(Boolean);
+}
+
+function renderCard(card) {
+  if (card.type === "provider") return renderProviderCard(card);
+  if (card.type === "trials") return renderTrialsCard(card);
+  if (card.type === "payment") return renderPaymentCard(card);
+  if (card.type === "booking") return renderBookingCard(card);
+  if (card.type === "cost") return renderCostChip(card.cost || card);
+  return "";
+}
+
+function renderProviderCard(card) {
+  const provider = card.provider || {};
+  const cost = card.cost || {};
+  const badge = provider.accepts_insurance === false ? "Confirm plan" : "Accepts your plan";
+  const badgeClass = provider.accepts_insurance === false ? "warn" : "";
+  return `
+    <section class="care-card provider-card">
+      <div class="card-title-row">
+        <div>
+          <h3>${escapeHtml(provider.name || "Recommended provider")}</h3>
+          <p>${escapeHtml(provider.specialty || "Care provider")}</p>
+        </div>
+        <span class="plan-badge ${badgeClass}">${badge}</span>
+      </div>
+      <div class="card-rows">
+        ${renderInfoRow("Address", provider.address)}
+        ${renderInfoRow("Next", provider.next_slot)}
+        ${cost.low || cost.high || cost.label ? renderInfoRow("Cost", renderCostChip(cost), true) : ""}
+      </div>
+    </section>
+  `;
+}
+
+function renderTrialsCard(card) {
+  const trials = card.trials || [];
+  if (!trials.length) return "";
+  return `
+    <details class="care-card trial-group" open>
+      <summary>Clinical evidence (${trials.length})</summary>
+      <div class="trial-list">
+        ${trials.map((trial) => `
+          <a class="trial-card" href="${escapeAttr(trial.url || "#")}" target="_blank" rel="noopener">
+            <span class="trial-title">${escapeHtml(trial.title || "Clinical trial")}</span>
+            <span class="trial-meta">
+              ${trial.phase ? `<span class="phase-chip">${escapeHtml(trial.phase)}</span>` : ""}
+              ${escapeHtml(trial.location || "ClinicalTrials.gov")}
+            </span>
+          </a>
+        `).join("")}
+      </div>
+    </details>
+  `;
+}
+
+function renderPaymentCard(card) {
+  const payment = card.payment || card;
+  return `
+    <section class="care-card payment-card">
+      <h3>Hold the appointment</h3>
+      <p>${escapeHtml(payment.amount_usd ? `Refundable deposit: $${payment.amount_usd}` : "Secure Stripe checkout")}</p>
+      ${payment.checkout_url ? `<a class="card-link primary" href="${escapeAttr(payment.checkout_url)}" target="_blank" rel="noopener">Open Stripe checkout</a>` : ""}
+    </section>
+  `;
+}
+
+function renderBookingCard(card) {
+  const booking = card.booking || card;
+  return `
+    <section class="care-card booking-card">
+      <div class="card-title-row">
+        <div>
+          <h3>Booking confirmed</h3>
+          <p>${escapeHtml(booking.confirmation_code || "Confirmation ready")}</p>
+        </div>
+        <span class="plan-badge">Booked</span>
+      </div>
+      <div class="card-rows">
+        ${renderInfoRow("Provider", booking.provider_name)}
+        ${renderInfoRow("When", booking.date)}
+        ${renderInfoRow("Where", booking.address)}
+      </div>
+      <a class="card-link primary" href="/api/ics/${encodeURIComponent(sessionId)}">Add to calendar</a>
+    </section>
+  `;
+}
+
+function renderCostChip(cost) {
+  const low = Number(cost.low || cost.estimate_low || 0);
+  const high = Number(cost.high || cost.estimate_high || 0);
+  const label = cost.label || (low || high ? `$${low || high}-${high || low}` : "Cost estimate");
+  const title = cost.explanation || "Estimate depends on copay, deductible, and coinsurance.";
+  return `<span class="cost-chip" title="${escapeAttr(title)}">${escapeHtml(label)}</span>`;
+}
+
+function renderInfoRow(label, value, isHtml = false) {
+  if (!value) return "";
+  return `
+    <div class="info-row">
+      <span>${escapeHtml(label)}</span>
+      <strong>${isHtml ? value : escapeHtml(value)}</strong>
+    </div>
+  `;
+}
+
+function renderActions(actions) {
+  return `
+    <div class="quick-actions">
+      ${actions.map((action) => `
+        <button type="button" data-send="${escapeAttr(action.send)}" class="${action.primary ? "primary" : ""}">
+          ${escapeHtml(action.label)}
+        </button>
+      `).join("")}
+    </div>
+  `;
+}
+
+function normalizeActions(actions) {
+  if (!Array.isArray(actions) || !actions.length) return null;
+  return actions.filter((action) => action?.label && action?.send);
+}
+
+function inferActions(data, cards) {
+  if (data.stage === "confirming" && cards.some((card) => card.type === "provider")) {
+    return [
+      { label: "Book this", send: "yes", primary: true },
+      { label: "Different time", send: "a different time" },
+      { label: "Another provider", send: "another provider" },
+    ];
+  }
+  if (data.stage === "awaiting_payment" || cards.some((card) => card.type === "payment")) {
+    return [
+      { label: "Payment done", send: "done", primary: true },
+      { label: "Skip deposit", send: "skip" },
+    ];
+  }
+  return [];
+}
+
+function inferProviderCard(text, stage) {
+  if (stage !== "confirming") return null;
+  const match = text.match(/\*\*([^*]+)\*\*\s*\(([^)]+)\)\s+at\s+([\s\S]+?),\s+with an opening\s+\*\*([^*]+)\*\*/i);
+  if (!match) return null;
+  return {
+    type: "provider",
+    provider: {
+      name: match[1],
+      specialty: match[2],
+      address: match[3].replace(/\s+/g, " ").trim(),
+      next_slot: match[4],
+      accepts_insurance: !/confirm they take your plan/i.test(text),
+    },
+    cost: inferCost(text),
+  };
+}
+
+function inferCost(text) {
+  const costMatch = text.match(/\$\s*(\d+(?:\.\d+)?)\s*[–-]\s*\$\s*(\d+(?:\.\d+)?)/);
+  if (!costMatch) return {};
+  const costContext = text.slice(costMatch.index + costMatch[0].length, costMatch.index + costMatch[0].length + 180);
+  const planMatch = costContext.match(/With ([^(.]+)/i);
+  const explanation = (text.match(/Estimated cost:[\s\S]*?\.\s*([^\n]+)/i) || [])[1] || "";
+  return {
+    low: Number(costMatch[1]),
+    high: Number(costMatch[2]),
+    label: `$${costMatch[1]}-$${costMatch[2]}${planMatch ? ` with ${planMatch[1].trim()}` : ""}`,
+    explanation,
+  };
+}
+
+function inferEvidenceCard(text) {
+  const trials = [];
+  const trialRegex = /Trial:\s*([^\n(]+?)\s*\(([^)]*)\)(?:\s*[\u2014-]\s*([^\n]+))?\n\s*(https?:\/\/[^\s<]+)/g;
+  let match;
+  while ((match = trialRegex.exec(text)) !== null) {
+    trials.push({
+      title: match[1].trim(),
+      phase: match[2].trim(),
+      location: (match[3] || "").trim(),
+      url: match[4],
+    });
+  }
+  return trials.length ? { type: "trials", trials } : null;
+}
+
+function inferPaymentCard(text, stage) {
+  if (stage !== "awaiting_payment" && !/Stripe|deposit/i.test(text)) return null;
+  const urls = text.match(/https?:\/\/[^\s<]+/g) || [];
+  const checkoutUrl = urls.find((url) => url.includes("stripe")) || urls[0] || "";
+  if (!checkoutUrl) return null;
+  const amount = (text.match(/refundable \$(\d+(?:\.\d+)?) deposit/i) || [])[1];
+  return { type: "payment", payment: { checkout_url: checkoutUrl, amount_usd: amount ? Number(amount) : 0 } };
+}
+
+function inferBookingCard(text, stage) {
+  if (stage !== "done" && !/Confirmation CL-/i.test(text)) return null;
+  const code = (text.match(/Confirmation\s+(CL-[A-Z0-9]+)/) || [])[1];
+  if (!code) return null;
+  const provider =
+    (text.match(/Booked:\s*([\s\S]+?)\s*[\u2014-]\s*/) || [])[1]?.trim() ||
+    (text.match(/Booked:\s*([\s\S]+?)\.\s*[A-Z][a-z]+day,/) || [])[1]?.trim() ||
+    "";
+  const address = (text.match(/Booked:[\s\S]+?[\u2014-]\s*([\s\S]+?)\.\s*[A-Z][a-z]+day,/) || [])[1]?.trim() || "";
+  const date = (text.match(/\.\s*([A-Z][a-z]+day,[^.]+)\.\s*Confirmation/) || [])[1]?.trim() || "";
+  return { type: "booking", booking: { confirmation_code: code, provider_name: provider, address, date } };
+}
+
 function renderPromptChips() {
   return `
     <div class="prompt-chips" aria-label="Example prompts">
@@ -126,8 +358,12 @@ function clearPromptChips() {
   chat.querySelectorAll(".prompt-chips").forEach((el) => el.remove());
 }
 
+function escapeHtml(value) {
+  return String(value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 function escapeAttr(value) {
-  return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+  return String(value || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 }
 
 function setEmergencyFocus(active) {
@@ -248,6 +484,12 @@ micBtn.onclick = () => {
 };
 
 chat.addEventListener("click", (event) => {
+  const action = event.target.closest("[data-send]");
+  if (action && !busy) {
+    textInput.value = action.dataset.send;
+    sendText();
+    return;
+  }
   const chip = event.target.closest("[data-prompt]");
   if (!chip || busy) return;
   textInput.value = chip.dataset.prompt;

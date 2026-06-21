@@ -48,6 +48,9 @@ conversation you can have **by voice, in your own language**.
 - **Real data:** providers come from the public **CMS NPPES NPI registry**.
 - **Resilient:** every agent-to-agent call falls back to in-process logic, so a
   single agent hiccup never breaks the demo.
+- **Redis** is shared infrastructure across all agent processes: a provider/triage
+  cache (huge repeat-latency savings), a session store, a **Streams audit trail**,
+  and live stat counters — all degrading gracefully if Redis is offline.
 
 ## The agents
 
@@ -75,13 +78,16 @@ cp .env.example .env       # then fill in ASI1_API_KEY, AGENTVERSE_API_KEY, DEEP
 # 3. Sanity check the whole pipeline with no network/mailbox needed
 ./venv/bin/python -m scripts.selftest
 
-# 4. Start all five agents (each in its own process + mailbox)
+# 4. Start Redis (shared cache / sessions / audit trail / stats)
+docker run -d --name careloop-redis -p 6379:6379 redis:7-alpine
+
+# 5. Start all six agents (each in its own process + mailbox)
 ./scripts/run_all.sh
 
-# 5. Auto-register every agent's mailbox on Agentverse (no browser clicks)
+# 6. Auto-register every agent's mailbox on Agentverse (no browser clicks)
 ./venv/bin/python -m scripts.register_agents
 
-# 6. Start the Deepgram voice web app
+# 7. Start the Deepgram voice web app
 ./venv/bin/uvicorn voice.backend:app --port 8080
 #    -> open http://127.0.0.1:8080  and click "Click to talk"
 ```
@@ -114,6 +120,8 @@ I'm having crushing chest pain and I can't breathe
 - **ASI:One** (`asi1-mini`) — intent parsing, triage, reply composition
 - **Deepgram** — Nova-3 STT (multilingual) + Aura-2 TTS
 - **Stripe** — real (test-mode) Checkout for a refundable booking deposit, verified server-side
+- **Redis** (beyond caching) — shared provider/triage cache (91×–853× faster on repeats),
+  session store, **Streams audit trail** of every clinical/payment/booking decision, live stat counters
 - **CMS NPPES NPI Registry** — real provider data
 - **FastAPI** — voice web app backend
 

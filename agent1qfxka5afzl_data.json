@@ -204,5 +204,88 @@
         "skip_payment": false,
         "deposit_paid": 0.0,
         "session_id": "voice:pay1"
+    },
+    "voice:rds1": {
+        "stage": "awaiting_payment",
+        "symptoms": "bad cough and fever for 5 days",
+        "patient_age": null,
+        "patient_name": "",
+        "city": "Berkeley",
+        "state": "CA",
+        "postal_code": "",
+        "insurance": "medicare",
+        "specialty": "Primary Care",
+        "taxonomy": "Family Medicine",
+        "pending": {
+            "provider": {
+                "name": "Allison Aiken, M.D.",
+                "specialty": "Family Medicine",
+                "address": "2222 BANCROFT WAY, BERKELEY, CA, 94720",
+                "phone": "510-642-6621",
+                "accepts_insurance": true,
+                "next_slot": "in 2 days at 3:45 PM",
+                "npi": "1376736397"
+            },
+            "cost_low": 144.0,
+            "cost_high": 207.0,
+            "cost_why": "With Medicare (≈$240 deductible left, 20% coinsurance), a primary care visit (≈$180 billed) would land around $144-$207.",
+            "visit_type": "primary_care"
+        },
+        "payment": {
+            "stripe_session_id": "cs_test_a1FQ9RwbaN1HucRENQqkgOrPG6Ndf9R2qdW9aK6YG4cW5UxyUBdum9kWxz",
+            "checkout_url": "https://checkout.stripe.com/c/pay/cs_test_a1FQ9RwbaN1HucRENQqkgOrPG6Ndf9R2qdW9aK6YG4cW5UxyUBdum9kWxz#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSdicGRmZGhqaWBTZHdsZGtxJz8nZmprcXdqaScpJ2R1bE5gfCc%2FJ3VuWnFgdnFaMDRRbm90T01Ad3F1NW5RdlV2a29CX1NQXXJNVlFPS1J3bGBWZjN3bWJUM3JjMUFKN1Y1THREf25pcjRvUUJ9R2c3YGFyMmhgME9nZ2RTSEdmYWdtaUNzajQ1NUphSmFvUGtuJyknY3dqaFZgd3Ngdyc%2FcXdwYCknZ2RmbmJ3anBrYUZqaWp3Jz8nJmNjY2NjYycpJ2lkfGpwcVF8dWAnPyd2bGtiaWBabHFgaCcpJ2BrZGdpYFVpZGZgbWppYWB3dic%2FcXdwYHgl",
+            "amount": 25.0
+        },
+        "skip_payment": false,
+        "deposit_paid": 0.0,
+        "session_id": "voice:rds1"
+    },
+    "voice:rds2": {
+        "stage": "emergency",
+        "symptoms": "crushing chest pain and cannot breathe",
+        "patient_age": null,
+        "patient_name": "",
+        "city": "",
+        "state": "",
+        "postal_code": "",
+        "insurance": "",
+        "specialty": "",
+        "taxonomy": "",
+        "pending": null,
+        "payment": null,
+        "skip_payment": false,
+        "deposit_paid": 0.0,
+        "session_id": "voice:rds2"
+    },
+    "voice:rds3": {
+        "stage": "confirming",
+        "symptoms": "bad cough and fever",
+        "patient_age": null,
+        "patient_name": "",
+        "city": "Berkeley",
+        "state": "CA",
+        "postal_code": "",
+        "insurance": "medicare",
+        "specialty": "Primary Care",
+        "taxonomy": "Family Medicine",
+        "pending": {
+            "provider": {
+                "name": "Allison Aiken, M.D.",
+                "specialty": "Family Medicine",
+                "address": "2222 BANCROFT WAY, BERKELEY, CA, 94720",
+                "phone": "510-642-6621",
+                "accepts_insurance": true,
+                "next_slot": "in 2 days at 3:45 PM",
+                "npi": "1376736397"
+            },
+            "cost_low": 144.0,
+            "cost_high": 207.0,
+            "cost_why": "With Medicare (≈$240 deductible left, 20% coinsurance), a primary care visit (≈$180 billed) would land around $144-$207.",
+            "visit_type": "primary_care"
+        },
+        "payment": null,
+        "skip_payment": false,
+        "deposit_paid": 0.0,
+        "session_id": "voice:rds3"
     }
 }

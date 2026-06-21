@@ -131,3 +131,21 @@ micBtn.onclick = () => {
 fetch("/api/health").then((r) => r.json()).then((h) => {
   if (!h.deepgram_key) setStatus("⚠️ DEEPGRAM_API_KEY not set — voice is disabled, typing still works.");
 }).catch(() => {});
+
+// Live Redis-backed stats (beyond caching: counters + cache hit-rate).
+const statsEl = document.getElementById("stats");
+async function pollStats() {
+  try {
+    const s = await (await fetch("/api/stats")).json();
+    if (!s.redis) { statsEl.textContent = ""; return; }
+    const st = s.stats || {};
+    const hits = st.nppes_cache_hit || 0, calls = st.nppes_api_call || 0;
+    const thits = st.triage_cache_hit || 0, tcalls = st.triage_llm_call || 0;
+    statsEl.innerHTML =
+      `🟢 Redis · bookings ${st.bookings || 0} · emergencies ${st.emergencies || 0} ` +
+      `· deposits ${st.payments_paid || 0}/${st.payments_requested || 0} ` +
+      `· provider cache ${hits}/${hits + calls} · triage cache ${thits}/${thits + tcalls}`;
+  } catch (e) { /* ignore */ }
+}
+pollStats();
+setInterval(pollStats, 4000);

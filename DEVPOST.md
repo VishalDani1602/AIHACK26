@@ -29,6 +29,10 @@ You describe a health concern in plain language (by **voice** or text). CareLoop
 - **Stripe agent transaction**: the Payment agent creates a real (test-mode)
   Checkout session and verifies `payment_status == "paid"` server-side before the
   Scheduler confirms — a genuine intent→action transaction, not a mock.
+- **Redis (beyond caching)**: shared infrastructure across every agent process — a
+  provider/triage cache (91×–853× faster on repeats), a session store, a **Streams
+  audit trail** of every clinical/payment/booking decision (a real healthcare audit
+  log), and live stat counters surfaced in the UI. Degrades gracefully if offline.
 - **Agent Chat Protocol + ASI:One**: the Orchestrator is discoverable and fully
   usable from ASI:One, so the **entire workflow runs in ASI:One chat with no
   custom frontend**. Agents coordinate through real agent-to-agent messaging

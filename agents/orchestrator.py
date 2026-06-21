@@ -176,9 +176,16 @@ async def _send_chat(ctx: Context, dest: str, text: str, end: bool = False):
 async def voice_endpoint(ctx: Context, req: VoiceRequest) -> VoiceResponse:
     key = f"voice:{req.session_id}"
     text = req.text.strip()
-    if not text:
-        return VoiceResponse(session_id=req.session_id, reply=GREETING, stage="collecting")
     state = load_state(ctx, key)
+    # Explicit plan from a UI selector wins; if it changes with no text, re-evaluate.
+    if req.insurance.strip():
+        plan = req.insurance.strip().lower()
+        if not text and state.get("insurance") != plan:
+            text = f"my insurance is {plan}"
+        state["insurance"] = plan
+    if not text:
+        save_state(ctx, key, state)
+        return VoiceResponse(session_id=req.session_id, reply=GREETING, stage="collecting")
     out = await handle_turn(state, text, AgentSpecialists(ctx))
     save_state(ctx, key, state)
     return VoiceResponse(

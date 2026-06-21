@@ -149,6 +149,8 @@ class PaymentVerifyResult(Model):
 class VoiceRequest(Model):
     session_id: str
     text: str
+    insurance: str = ""         # optional explicit plan from a UI selector
+                                # (medicare|medicaid|ppo|hmo|high_deductible|uninsured)
 
 
 class VoiceResponse(Model):

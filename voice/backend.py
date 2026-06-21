@@ -93,11 +93,12 @@ async def deepgram_tts(text: str) -> bytes:
         return r.content
 
 
-async def run_orchestrator(session_id: str, text: str) -> dict:
+async def run_orchestrator(session_id: str, text: str, insurance: str = "") -> dict:
     """Route a turn through the agent mesh (REST); fall back to local orchestration."""
     try:
         async with httpx.AsyncClient(timeout=40) as client:
-            r = await client.post(ORCH_URL, json={"session_id": session_id, "text": text})
+            r = await client.post(ORCH_URL, json={
+                "session_id": session_id, "text": text, "insurance": insurance})
             r.raise_for_status()
             d = r.json()
             return {
@@ -111,6 +112,16 @@ async def run_orchestrator(session_id: str, text: str) -> dict:
     except Exception:
         state = store.session_get(session_id) or _LOCAL_SESSIONS.get(session_id) or new_state()
         state["session_id"] = session_id
+        if insurance.strip():
+            plan = insurance.strip().lower()
+            if not text and state.get("insurance") != plan:
+                text = f"my insurance is {plan}"
+            state["insurance"] = plan
+        if not text:
+            _LOCAL_SESSIONS[session_id] = state
+            store.session_set(session_id, state)
+            return {"reply": "", "stage": state.get("stage", ""), "emergency": False,
+                    "card": None, "actions": None, "via": "local-fallback"}
         out = await handle_turn(state, text, _LOCAL)
         _LOCAL_SESSIONS[session_id] = state
         store.session_set(session_id, state)
@@ -216,9 +227,10 @@ async def api_text(payload: dict):
     """Typed-input turn (no audio). Returns reply text + spoken audio."""
     session_id = payload.get("session_id", "web")
     text = (payload.get("text") or "").strip()
-    if not text:
+    insurance = (payload.get("insurance") or "").strip()
+    if not text and not insurance:
         return JSONResponse({"error": "empty text"}, status_code=400)
-    result = await run_orchestrator(session_id, text)
+    result = await run_orchestrator(session_id, text, insurance)
     audio_b64 = await _tts_b64(result["reply"])
     return {"transcript": text, **result, "audio": audio_b64}
 
@@ -228,6 +240,7 @@ async def api_converse(request: Request):
     """Audio-input turn: STT -> orchestrator -> TTS. Audio is the raw request body."""
     session_id = request.query_params.get("session_id", "web")
     language = request.query_params.get("language", DG_DEFAULT_LANG)
+    insurance = request.query_params.get("insurance", "")
     content_type = request.headers.get("content-type", "audio/webm")
     audio = await request.body()
     if not audio:
@@ -239,7 +252,7 @@ async def api_converse(request: Request):
     if not transcript:
         return {"transcript": "", "reply": "Sorry, I didn't catch that. Could you say it again?",
                 "stage": "collecting", "emergency": False, "audio": ""}
-    result = await run_orchestrator(session_id, transcript)
+    result = await run_orchestrator(session_id, transcript, insurance)
     audio_b64 = await _tts_b64(result["reply"])
     return {"transcript": transcript, **result, "audio": audio_b64}
 

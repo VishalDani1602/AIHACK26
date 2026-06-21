@@ -128,6 +128,15 @@ the prose and render from `card`/`actions` directly.
   Provider → Book this/Different time/Another provider; Payment → I've paid/Skip
   deposit; Booking → New request.
 
+**Request-side input — insurance plan selector (NEW).** Both `/api/text` and
+`/api/converse` now accept an optional **`insurance`** value
+(`medicare|medicaid|ppo|hmo|high_deductible|uninsured`); `/api/text` takes it in the
+JSON body, `/api/converse` as a `?insurance=` query param. Add a **plan `<select>`**
+next to the Language selector and send the chosen value with each turn (like
+`language`). Selecting a plan with empty text re-evaluates and updates the cost on
+the current provider card. The agent also asks for the plan conversationally when
+it's missing, so cost is plan-specific either way.
+
 Original proposal (for reference):
 
 ```jsonc

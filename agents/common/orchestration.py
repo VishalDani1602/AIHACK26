@@ -268,11 +268,13 @@ async def handle_turn(state: Dict, user_text: str, specialists: Specialists) -> 
     state["condition"] = tri.condition
     state["chronic"] = tri.chronic
 
-    # Need a location to search for providers.
+    # Need a location to search for providers (also ask for the insurance plan so
+    # the cost estimate is plan-specific).
     if not (state.get("city") or state.get("postal_code")):
+        ins_ask = "" if state.get("insurance") else " And what insurance do you have (e.g. Medicare, Medicaid, a PPO/HMO) — or are you self-pay?"
         return _out(state,
                     f"{tri.advice} I'd start with **{tri.recommended_specialty}**. "
-                    "What city or ZIP code should I search near?",
+                    f"What city or ZIP code should I search near?{ins_ask}",
                     "collecting")
 
     # Find providers.

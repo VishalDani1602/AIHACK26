@@ -342,18 +342,31 @@ footer {
     padding-top: 16px;
   }
 
-  header,
-  .controls {
+  header {
     flex-direction: column;
     align-items: stretch;
   }
 
   .controls {
-    gap: 7px;
+    display: grid;
+    grid-template-columns: 84px minmax(0, 1fr);
+    align-items: end;
+    gap: 6px 8px;
   }
 
   .controls label {
+    grid-column: 2;
     font-size: 12px;
+  }
+
+  .newchat {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .controls select {
+    grid-column: 2;
+    width: 100%;
   }
 
   .chat {

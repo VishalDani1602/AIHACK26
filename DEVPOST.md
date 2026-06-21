@@ -17,13 +17,18 @@ You describe a health concern in plain language (by **voice** or text). CareLoop
    rules that route emergencies straight to **911**, never to a booking.
 2. **Finds real providers** near you via the public **CMS NPPES** registry.
 3. **Estimates your out-of-pocket cost** based on your insurance type.
-4. **Books the appointment** and produces a calendar invite — then reads the
+4. **Takes a refundable deposit** via a real **Stripe** Checkout (test mode) and
+   verifies the payment server-side before confirming.
+5. **Books the appointment** and produces a calendar invite — then reads the
    confirmation back to you by voice.
 
 ## How we built it
-- **Fetch.ai uAgents**: five agents — an **Orchestrator** plus **Triage**,
-  **Provider-Finder**, **Cost-Estimator**, and **Scheduler** specialists — each
-  registered on **Agentverse** with its own mailbox and profile.
+- **Fetch.ai uAgents**: six agents — an **Orchestrator** plus **Triage**,
+  **Provider-Finder**, **Cost-Estimator**, **Scheduler**, and **Payment**
+  specialists — each registered on **Agentverse** with its own mailbox and profile.
+- **Stripe agent transaction**: the Payment agent creates a real (test-mode)
+  Checkout session and verifies `payment_status == "paid"` server-side before the
+  Scheduler confirms — a genuine intent→action transaction, not a mock.
 - **Agent Chat Protocol + ASI:One**: the Orchestrator is discoverable and fully
   usable from ASI:One, so the **entire workflow runs in ASI:One chat with no
   custom frontend**. Agents coordinate through real agent-to-agent messaging
@@ -42,7 +47,8 @@ rather just *talk* to get help than fill out forms.
 
 ## Agent outcomes (intent → action)
 A spoken sentence becomes a **triaged plan, a real provider match, a cost estimate,
-and a booked appointment with a calendar invite** — concrete actions, not a chat.
+a completed (test-mode) deposit payment, and a booked appointment with a calendar
+invite** — concrete actions, not a chat.
 
 ## Mapping to the Fetch.ai judging criteria
 - **Use of Fetch.ai tech (25%)** — 5 uAgents on Agentverse, Agent Chat Protocol,
@@ -53,8 +59,9 @@ and a booked appointment with a calendar invite** — concrete actions, not a ch
 - **UX (10%)** — natural voice conversation; also fully usable in ASI:One chat.
 
 ## What's next
-Real scheduling/EHR integrations, live insurance-network checks, telephony (call a
-real number), and an optional copay deposit via Fetch.ai's Stripe payment protocol.
+Real scheduling/EHR integrations, live insurance-network checks, and telephony
+(call a real number). The Stripe deposit already completes a real test-mode
+transaction; next is applying it to the actual copay and refund-on-arrival.
 
 ---
 
@@ -66,6 +73,7 @@ real number), and an optional copay deposit via Fetch.ai's Stripe payment protoc
   - Provider-Finder: https://agentverse.ai/agents/details/agent1qdjaj2ctxsjs3vpt5j7uxk46vq9znrquhn9q8fkljqhjueqrr93nzwj3whq/profile
   - Cost-Estimator: https://agentverse.ai/agents/details/agent1qtrge69qnynvpfwd7duw9pgjeffsmmlemflyz06v6v4r2yndtvcwq5k4sd6/profile
   - Scheduler: https://agentverse.ai/agents/details/agent1q0d726utvqsgjmctt4etsclcapk9tvx75t7tlrcp0luyvsecyr7yz9ujgyf/profile
+  - Payment: https://agentverse.ai/agents/details/agent1qdr7s04hzndeefr2tt085nt29q8jxklf8hne9yhchn63huey9eurczs5ux5/profile
 - **GitHub:** https://github.com/VishalDani1602/AIHACK26
 - **Demo video (3–5 min):** _paste link_
 
@@ -73,7 +81,9 @@ real number), and an optional copay deposit via Fetch.ai's Stripe payment protoc
 1. **Voice golden path** — open the web app, click to talk:
    *"My dad has had a bad cough and a low fever for five days, he's on Medicare and we're in Berkeley."*
    → CareLoop recommends a clinician, names a **real** Berkeley provider with an
-   opening and a cost estimate, asks to book → say **"yes"** → hear the confirmation.
+   opening and a cost estimate, asks to book → say **"yes"** → it returns a **real
+   Stripe Checkout link** for a refundable $25 deposit → pay with test card
+   `4242 4242 4242 4242` → say **"done"** → agent verifies payment → hear the booking confirmation.
 2. **Multilingual** — switch the language selector and ask in Spanish.
 3. **Emergency** — *"I'm having crushing chest pain and I can't breathe"* → immediate **911** escalation, no booking.
 4. **ASI:One (no frontend)** — run the same golden-path query in ASI:One chat to show

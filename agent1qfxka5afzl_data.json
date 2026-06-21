@@ -169,5 +169,40 @@
         },
         "session_id": "agent1qtxva8p8rt4jeds9ncv84nz0gn5qguemsp69ntnvdfta50eaqxf3v0gfr2s",
         "last_booking_ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//CareLoop//EN\r\nBEGIN:VEVENT\r\nUID:CL-5QIV1S@careloop\r\nDTSTAMP:20260621T113502Z\r\nDTSTART:20260623T100000Z\r\nDTEND:20260623T103000Z\r\nSUMMARY:Appointment with Alexander Marsh, M.D., Pc\r\nLOCATION:95 3RD ST FL 2, SAN FRANCISCO, CA, 94103\r\nDESCRIPTION:CareLoop booking CL-5QIV1S. Reason: fever and cold for 3 days\r\nEND:VEVENT\r\nEND:VCALENDAR"
+    },
+    "voice:pay1": {
+        "stage": "awaiting_payment",
+        "symptoms": "bad cough and low fever for five days",
+        "patient_age": null,
+        "patient_name": "",
+        "city": "Berkeley",
+        "state": "CA",
+        "postal_code": "",
+        "insurance": "medicare",
+        "specialty": "Primary Care",
+        "taxonomy": "Family Medicine",
+        "pending": {
+            "provider": {
+                "name": "Allison Aiken, M.D.",
+                "specialty": "Family Medicine",
+                "address": "2222 BANCROFT WAY, BERKELEY, CA, 94720",
+                "phone": "510-642-6621",
+                "accepts_insurance": true,
+                "next_slot": "in 2 days at 3:45 PM",
+                "npi": "1376736397"
+            },
+            "cost_low": 144.0,
+            "cost_high": 207.0,
+            "cost_why": "With Medicare (≈$240 deductible left, 20% coinsurance), a primary care visit (≈$180 billed) would land around $144-$207.",
+            "visit_type": "primary_care"
+        },
+        "payment": {
+            "stripe_session_id": "cs_test_a1JXoYTmsrNsMN4Lcn10bp9grCOhBr5OiI1vafOHaVjd0LaHDtdhSOOdog",
+            "checkout_url": "https://checkout.stripe.com/c/pay/cs_test_a1JXoYTmsrNsMN4Lcn10bp9grCOhBr5OiI1vafOHaVjd0LaHDtdhSOOdog#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSdicGRmZGhqaWBTZHdsZGtxJz8nZmprcXdqaScpJ2R1bE5gfCc%2FJ3VuWnFgdnFaMDRRbm90T01Ad3F1NW5RdlV2a29CX1NQXXJNVlFPS1J3bGBWZjN3bWJUM3JjMUFKN1Y1THREf25pcjRvUUJ9R2c3YGFyMmhgME9nZ2RTSEdmYWdtaUNzajQ1NUphSmFvUGtuJyknY3dqaFZgd3Ngdyc%2FcXdwYCknZ2RmbmJ3anBrYUZqaWp3Jz8nJmNjY2NjYycpJ2lkfGpwcVF8dWAnPyd2bGtiaWBabHFgaCcpJ2BrZGdpYFVpZGZgbWppYWB3dic%2FcXdwYHgl",
+            "amount": 25.0
+        },
+        "skip_payment": false,
+        "deposit_paid": 0.0,
+        "session_id": "voice:pay1"
     }
 }

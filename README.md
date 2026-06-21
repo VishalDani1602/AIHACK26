@@ -33,15 +33,15 @@ conversation you can have **by voice, in your own language**.
    │  ASI:One LLM: parse intent, manage the conversation, compose replies     │
    └───────┬───────────────┬───────────────┬───────────────┬────────────────┘
            │ send_and_receive (agent-to-agent messaging via Agentverse)
-           ▼               ▼               ▼               ▼
-      ┌─────────┐   ┌──────────────┐  ┌───────────┐  ┌─────────────┐
-      │ Triage  │   │ Provider-    │  │ Cost-     │  │ Scheduler   │
-      │ (911    │   │ Finder       │  │ Estimator │  │ (.ics +     │
-      │  rules) │   │ (CMS NPPES)  │  │           │  │  confirm)   │
-      └─────────┘   └──────────────┘  └───────────┘  └─────────────┘
+           ▼          ▼            ▼          ▼            ▼
+   ┌─────────┐ ┌────────────┐ ┌─────────┐ ┌──────────┐ ┌──────────┐
+   │ Triage  │ │ Provider-  │ │ Cost-   │ │ Scheduler│ │ Payment  │
+   │ (911    │ │ Finder     │ │ Estimator│ │ (.ics +  │ │ (Stripe  │
+   │  rules) │ │ (CMS NPPES)│ │         │ │  confirm)│ │  deposit)│
+   └─────────┘ └────────────┘ └─────────┘ └──────────┘ └──────────┘
 ```
 
-- **5 agents**, each registered on **Agentverse** with its own mailbox + profile.
+- **6 agents**, each registered on **Agentverse** with its own mailbox + profile.
 - The **Orchestrator** speaks the **Agent Chat Protocol**, so the *entire workflow
   runs from ASI:One with no custom frontend* — then the Deepgram web app layers a
   natural voice experience on top of the same agent.
@@ -58,6 +58,7 @@ conversation you can have **by voice, in your own language**.
 | Provider-Finder | `agent1qdjaj2ctxsjs3vpt5j7uxk46vq9znrquhn9q8fkljqhjueqrr93nzwj3whq` | Real providers from CMS NPPES |
 | Cost-Estimator | `agent1qtrge69qnynvpfwd7duw9pgjeffsmmlemflyz06v6v4r2yndtvcwq5k4sd6` | Plan-aware out-of-pocket estimate |
 | Scheduler | `agent1q0d726utvqsgjmctt4etsclcapk9tvx75t7tlrcp0luyvsecyr7yz9ujgyf` | Confirmation + iCalendar invite |
+| Payment | `agent1qdr7s04hzndeefr2tt085nt29q8jxklf8hne9yhchn63huey9eurczs5ux5` | Stripe Checkout deposit + server-side verify |
 
 Profile URL pattern: `https://agentverse.ai/agents/details/<address>/profile`
 (run `./venv/bin/python -m scripts.print_addresses` to reprint).
@@ -94,9 +95,13 @@ ASI:One promo code: `BERKELEYAI` · Agentverse promo code: `BERKELEYAIAV`
 my dad has had a bad cough and a low fever for five days,
 he's on Medicare and we're in Berkeley
 ```
-→ "…I'd start with Pulmonology … the best match near Berkeley is **Henry Abrons, M.D.**
-at 2450 Ashby Ave with an opening in 2 days … estimated **$210–$301** with Medicare …
-want me to book it?" → *"yes"* → ✅ booked + calendar invite.
+→ "…I'd start with Primary Care … the best match near Berkeley is **Allison Aiken, M.D.**
+at 2222 Bancroft Way with an opening in 2 days … estimated **$144–$207** with Medicare …
+want me to book it?" → *"yes"* → **pay a refundable $25 deposit** via a real Stripe
+Checkout link (test card `4242 4242 4242 4242`) → *"done"* → agent verifies payment →
+✅ booked + calendar invite.
+
+> If `STRIPE_SECRET_KEY` is not set, CareLoop skips the deposit and books directly.
 
 **Emergency path** (routes to 911, no booking):
 ```
@@ -108,6 +113,7 @@ I'm having crushing chest pain and I can't breathe
 - **Agent Chat Protocol** — ASI:One discoverability & chat
 - **ASI:One** (`asi1-mini`) — intent parsing, triage, reply composition
 - **Deepgram** — Nova-3 STT (multilingual) + Aura-2 TTS
+- **Stripe** — real (test-mode) Checkout for a refundable booking deposit, verified server-side
 - **CMS NPPES NPI Registry** — real provider data
 - **FastAPI** — voice web app backend
 

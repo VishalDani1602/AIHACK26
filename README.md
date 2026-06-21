@@ -24,33 +24,37 @@ conversation you can have **by voice, in your own language**.
 ## How it works (architecture)
 
 ```
-                         ┌──────────────── ASI:One chat ────────────────┐
-   🎙 Browser voice app  │   (Agent Chat Protocol — no frontend needed)  │
-   (Deepgram STT/TTS)    └───────────────────────┬──────────────────────┘
-          │  POST /voice (REST)                   │  ChatMessage
-          ▼                                       ▼
-   ┌─────────────────────────  Orchestrator Agent  ─────────────────────────┐
-   │  ASI:One LLM: parse intent, manage the conversation, compose replies     │
-   └───────┬───────────────┬───────────────┬───────────────┬────────────────┘
-           │ send_and_receive (agent-to-agent messaging via Agentverse)
-           ▼          ▼            ▼          ▼            ▼
-   ┌─────────┐ ┌────────────┐ ┌─────────┐ ┌──────────┐ ┌──────────┐
-   │ Triage  │ │ Provider-  │ │ Cost-   │ │ Scheduler│ │ Payment  │
-   │ (911    │ │ Finder     │ │ Estimator│ │ (.ics +  │ │ (Stripe  │
-   │  rules) │ │ (CMS NPPES)│ │         │ │  confirm)│ │  deposit)│
-   └─────────┘ └────────────┘ └─────────┘ └──────────┘ └──────────┘
+              ┌──────────────── ASI:One chat ────────────────┐    🎙 Browser voice app + 📊 dashboard
+              │   (Agent Chat Protocol — no frontend needed)  │       (Deepgram STT/TTS, interactive cards)
+              └───────────────────────┬──────────────────────┘                 │  POST /voice (REST)
+                            ChatMessage │                                       │
+                                        ▼                                       ▼
+   ┌─────────────────────────────  Orchestrator Agent  ──────────────────────────────┐
+   │  ASI:One LLM: parse intent, manage the conversation, compose replies + cards      │
+   └──┬──────────┬──────────┬──────────┬───────────┬──────────┬───────────────────────┘
+      │ send_and_receive (agent-to-agent messaging via Agentverse)
+      ▼          ▼          ▼          ▼           ▼          ▼
+  ┌────────┐┌──────────┐┌────────┐┌──────────┐┌────────┐┌────────────┐
+  │ Triage ││ Provider ││  Cost  ││ Scheduler││Payment ││  Evidence  │
+  │  911   ││CMS NPPES ││  est.  ││  .ics +  ││ Stripe ││  trials +  │
+  │ rules  ││          ││        ││ confirm  ││ deposit││ drug safety│
+  └────────┘└──────────┘└────────┘└──────────┘└────────┘└────────────┘
 ```
 
-- **6 agents**, each registered on **Agentverse** with its own mailbox + profile.
+- **7 agents**, each registered on **Agentverse** with its own mailbox + profile.
 - The **Orchestrator** speaks the **Agent Chat Protocol**, so the *entire workflow
   runs from ASI:One with no custom frontend* — then the Deepgram web app layers a
-  natural voice experience on top of the same agent.
-- **Real data:** providers come from the public **CMS NPPES NPI registry**.
+  natural voice experience (and interactive cards) on top of the same agent.
+- **Real data:** providers from **CMS NPPES**, recruiting trials from
+  **ClinicalTrials.gov**, drug-safety from **openFDA**.
+- **Takes action:** for serious/chronic conditions it surfaces relevant **clinical
+  trials + drug-safety notes**, and it completes a real (test-mode) **Stripe deposit**
+  before booking.
 - **Resilient:** every agent-to-agent call falls back to in-process logic, so a
   single agent hiccup never breaks the demo.
-- **Redis** is shared infrastructure across all agent processes: a provider/triage
-  cache (huge repeat-latency savings), a session store, a **Streams audit trail**,
-  and live stat counters — all degrading gracefully if Redis is offline.
+- **Redis** is shared infrastructure across all agent processes: a provider/triage/
+  trials cache (huge repeat-latency savings), a session store, a **Streams audit
+  trail**, and live stat counters — all degrading gracefully if Redis is offline.
 
 ## The agents
 
@@ -62,6 +66,7 @@ conversation you can have **by voice, in your own language**.
 | Cost-Estimator | `agent1qtrge69qnynvpfwd7duw9pgjeffsmmlemflyz06v6v4r2yndtvcwq5k4sd6` | Plan-aware out-of-pocket estimate |
 | Scheduler | `agent1q0d726utvqsgjmctt4etsclcapk9tvx75t7tlrcp0luyvsecyr7yz9ujgyf` | Confirmation + iCalendar invite |
 | Payment | `agent1qdr7s04hzndeefr2tt085nt29q8jxklf8hne9yhchn63huey9eurczs5ux5` | Stripe Checkout deposit + server-side verify |
+| Evidence | `agent1qt2nusghdan489nh92w37ax33gz8yxfuklezkph029eyju5dyt7vv7m2eag` | Recruiting clinical trials (ClinicalTrials.gov) + drug safety (openFDA) |
 
 Profile URL pattern: `https://agentverse.ai/agents/details/<address>/profile`
 (run `./venv/bin/python -m scripts.print_addresses` to reprint).
@@ -73,24 +78,25 @@ Profile URL pattern: `https://agentverse.ai/agents/details/<address>/profile`
 python3 -m venv venv && ./venv/bin/pip install -r requirements.txt
 
 # 2. Configure keys
-cp .env.example .env       # then fill in ASI1_API_KEY, AGENTVERSE_API_KEY, DEEPGRAM_API_KEY
+cp .env.example .env   # fill in ASI1_API_KEY, AGENTVERSE_API_KEY, DEEPGRAM_API_KEY
+                       # optional: STRIPE_SECRET_KEY (deposit), REDIS_URL
 
-# 3. Sanity check the whole pipeline with no network/mailbox needed
-./venv/bin/python -m scripts.selftest
-
-# 4. Start Redis (shared cache / sessions / audit trail / stats)
-docker run -d --name careloop-redis -p 6379:6379 redis:7-alpine
-
-# 5. Start all six agents (each in its own process + mailbox)
-./scripts/run_all.sh
-
-# 6. Auto-register every agent's mailbox on Agentverse (no browser clicks)
-./venv/bin/python -m scripts.register_agents
-
-# 7. Start the Deepgram voice web app
-./venv/bin/uvicorn voice.backend:app --port 8080
-#    -> open http://127.0.0.1:8080  and click "Click to talk"
+# 3. One command: starts Redis + all 7 agents + voice app, registers, runs a full demo
+./scripts/demo.sh
+#    -> then open the voice app at http://127.0.0.1:8080
+#       and the live dashboard at http://127.0.0.1:8080/dashboard
 ```
+
+<details><summary>…or run each step manually</summary>
+
+```bash
+./venv/bin/python -m scripts.selftest          # sanity-check the pipeline (no keys/network needed)
+redis-server --daemonize yes                   # or: docker run -d --name careloop-redis -p 6379:6379 redis:7-alpine
+./scripts/run_all.sh                           # start all 7 agents (each in its own process + mailbox)
+./venv/bin/python -m scripts.register_agents   # auto-register every mailbox on Agentverse (no browser clicks)
+./venv/bin/uvicorn voice.backend:app --port 8080
+```
+</details>
 
 ASI:One promo code: `BERKELEYAI` · Agentverse promo code: `BERKELEYAIAV`
 
@@ -109,6 +115,15 @@ Checkout link (test card `4242 4242 4242 4242`) → *"done"* → agent verifies 
 
 > If `STRIPE_SECRET_KEY` is not set, CareLoop skips the deposit and books directly.
 
+**Clinical-evidence path** (serious/chronic condition → real recruiting trials + drug safety):
+```
+my mom was diagnosed with early-stage breast cancer,
+she's in San Francisco on Medicare and takes tamoxifen
+```
+→ routes to **Oncology**, names a real SF oncologist, and surfaces **recruiting
+clinical trials** near her (ClinicalTrials.gov) plus a **tamoxifen drug-interaction
+note** (openFDA) — options to discuss with her doctor.
+
 **Emergency path** (routes to 911, no booking):
 ```
 I'm having crushing chest pain and I can't breathe
@@ -120,10 +135,10 @@ I'm having crushing chest pain and I can't breathe
 - **ASI:One** (`asi1-mini`) — intent parsing, triage, reply composition
 - **Deepgram** — Nova-3 STT (multilingual) + Aura-2 TTS
 - **Stripe** — real (test-mode) Checkout for a refundable booking deposit, verified server-side
-- **Redis** (beyond caching) — shared provider/triage cache (91×–853× faster on repeats),
+- **Redis** (beyond caching) — shared provider/triage/trials cache (91×–853× faster on repeats),
   session store, **Streams audit trail** of every clinical/payment/booking decision, live stat counters
-- **CMS NPPES NPI Registry** — real provider data
-- **FastAPI** — voice web app backend
+- **CMS NPPES** — real provider data · **ClinicalTrials.gov** — recruiting trials · **openFDA** — drug safety
+- **FastAPI** — voice web app + interactive cards + live **/dashboard**
 
 ## Deliverables
 - 🔗 ASI:One shared chat: _add link here_
@@ -133,10 +148,12 @@ I'm having crushing chest pain and I can't breathe
 
 ## Repository layout
 ```
-agents/           orchestrator + 4 specialists, shared logic/models/prompts, profile READMEs
-voice/            FastAPI Deepgram bridge + click-to-talk web UI
+agents/           orchestrator + 6 specialists (triage, provider, cost, scheduler,
+                  payment, evidence); shared logic/models/prompts/clients; profile READMEs
+voice/            FastAPI Deepgram bridge + click-to-talk web UI + /dashboard
 data/             taxonomy map + illustrative cost model
-scripts/          selftest, run_all.sh, print_addresses
+scripts/          demo.sh, showcase.py, selftest, run_all.sh, register_agents, print_addresses
+docs/             UI/UX plan + interactive-card API contract
 ```
 
 ## Safety & honesty

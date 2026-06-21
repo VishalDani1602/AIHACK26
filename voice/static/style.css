@@ -101,6 +101,10 @@ h1 {
   font-size: 13px;
 }
 
+.controls label {
+  min-width: max-content;
+}
+
 .controls select,
 .newchat,
 .text-row button {
@@ -211,8 +215,31 @@ h1 {
 }
 
 .mic .mic-icon {
-  font-size: 18px;
-  line-height: 1;
+  width: 18px;
+  height: 18px;
+  display: inline-grid;
+  place-items: center;
+  position: relative;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+}
+
+.mic .mic-icon::before {
+  content: "";
+  width: 4px;
+  height: 9px;
+  border-radius: 4px;
+  background: currentColor;
+}
+
+.mic .mic-icon::after {
+  content: "";
+  width: 8px;
+  height: 1.5px;
+  position: absolute;
+  bottom: 3px;
+  border-radius: 999px;
+  background: currentColor;
 }
 
 .mic.recording {
@@ -302,6 +329,13 @@ footer {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
+@media (hover: hover) {
+  .newchat:hover,
+  .text-row button:hover {
+    background: var(--paper-soft);
+  }
+}
+
 @media (max-width: 680px) {
   .app {
     width: min(100% - 20px, 780px);
@@ -329,5 +363,13 @@ footer {
 
   .bubble {
     max-width: 92%;
+  }
+
+  .text-row {
+    flex-direction: column;
+  }
+
+  .text-row button {
+    min-height: 40px;
   }
 }

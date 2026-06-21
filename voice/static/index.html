@@ -13,11 +13,11 @@
         <span class="logo">⊕</span>
         <div>
           <h1>CareLoop</h1>
-          <p class="tag">Voice-first healthcare concierge · powered by Fetch.ai agents + Deepgram</p>
+          <p class="tag">Care navigation by voice or text</p>
         </div>
       </div>
       <div class="controls">
-        <button id="newChat" class="newchat" title="Start a new conversation">＋ New chat</button>
+        <button id="newChat" class="newchat" title="Start a new conversation">New</button>
         <label for="lang">Language</label>
         <select id="lang" title="Deepgram Nova-3 multilingual">
           <option value="multi" selected>Auto (multilingual)</option>
@@ -33,8 +33,7 @@
     <div id="chat" class="chat">
       <div class="msg bot">
         <div class="bubble">
-          Hi, I'm <b>CareLoop</b>. I help you find and book care. Tell me what's going on —
-          for example, <i>"my dad has had a bad cough and fever for five days, he's on Medicare in Berkeley."</i>
+          Hi, I'm <b>CareLoop</b>. Tell me what's going on, who it is for, and where to search.
           <div class="note">Not medical advice. For an emergency, call 911.</div>
         </div>
       </div>
@@ -42,11 +41,11 @@
 
     <div class="composer">
       <button id="mic" class="mic" title="Click to talk">
-        <span class="mic-icon">🎙️</span>
-        <span class="mic-label">Click to talk</span>
+        <span class="mic-icon" aria-hidden="true"></span>
+        <span class="mic-label">Speak</span>
       </button>
       <div class="text-row">
-        <input id="textInput" type="text" placeholder="…or type your message and press Enter" />
+        <input id="textInput" type="text" placeholder="Type a message" />
         <button id="sendBtn">Send</button>
       </div>
     </div>

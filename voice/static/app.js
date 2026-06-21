@@ -51,14 +51,14 @@ async function sendTurn(promise) {
   try {
     const res = await promise;
     const data = await res.json();
-    if (data.error) { setStatus("⚠️ " + data.error); return; }
+    if (data.error) { setStatus("Warning: " + data.error); return; }
     if (data.transcript) addMessage("user", data.transcript);
     addMessage("bot", data.reply, { emergency: data.emergency });
     viaEl.textContent = data.via ? "routed via: " + data.via : "";
     playAudio(data.audio);
     setStatus("");
   } catch (e) {
-    setStatus("⚠️ Network error: " + e.message);
+    setStatus("Network error: " + e.message);
   } finally {
     busy = false;
     micBtn.classList.remove("disabled");
@@ -69,7 +69,7 @@ async function sendText() {
   const text = textInput.value.trim();
   if (!text) return;
   textInput.value = "";
-  setStatus("Thinking…");
+  setStatus("Thinking");
   await sendTurn(fetch("/api/text", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -89,7 +89,7 @@ async function startRecording() {
     mediaRecorder.onstop = async () => {
       stream.getTracks().forEach((t) => t.stop());
       const blob = new Blob(chunks, { type: mediaRecorder.mimeType });
-      setStatus("Transcribing & thinking…");
+      setStatus("Transcribing and thinking");
       const lang = langSel.value;
       await sendTurn(fetch(`/api/converse?session_id=${sessionId}&language=${lang}`, {
         method: "POST",
@@ -100,10 +100,10 @@ async function startRecording() {
     mediaRecorder.start();
     recording = true;
     micBtn.classList.add("recording");
-    micLabel.textContent = "Listening… click to stop";
-    setStatus("Recording…");
+    micLabel.textContent = "Listening - tap to stop";
+    setStatus("Recording");
   } catch (e) {
-    setStatus("⚠️ Microphone access denied: " + e.message);
+    setStatus("Microphone access denied: " + e.message);
   }
 }
 
@@ -112,7 +112,7 @@ function stopRecording() {
     mediaRecorder.stop();
     recording = false;
     micBtn.classList.remove("recording");
-    micLabel.textContent = "Click to talk";
+    micLabel.textContent = "Speak";
   }
 }
 
@@ -129,8 +129,7 @@ micBtn.onclick = () => {
 
 // New chat: fresh session id (server keys state by session, so this fully resets) + clear UI.
 const GREETING_HTML =
-  "Hi, I'm <b>CareLoop</b>. Tell me what's going on and I'll help you find and book care — " +
-  'for example, <i>"my dad has had a bad cough and fever for five days, he\'s on Medicare in Berkeley."</i>' +
+  "Hi, I'm <b>CareLoop</b>. Tell me what's going on, who it is for, and where to search." +
   '<div class="note">Not medical advice. For an emergency, call 911.</div>';
 
 function resetChat() {
@@ -141,7 +140,7 @@ function resetChat() {
   wrap.className = "msg bot";
   wrap.innerHTML = '<div class="bubble">' + GREETING_HTML + "</div>";
   chat.appendChild(wrap);
-  setStatus("New conversation started.");
+  setStatus("New conversation started");
   viaEl.textContent = "";
   textInput.value = "";
 }
@@ -149,7 +148,7 @@ document.getElementById("newChat").onclick = resetChat;
 
 // Surface backend config on load (helps during the demo).
 fetch("/api/health").then((r) => r.json()).then((h) => {
-  if (!h.deepgram_key) setStatus("⚠️ DEEPGRAM_API_KEY not set — voice is disabled, typing still works.");
+  if (!h.deepgram_key) setStatus("Deepgram key missing - voice is disabled, typing still works.");
 }).catch(() => {});
 
 // Live Redis-backed stats (beyond caching: counters + cache hit-rate).
@@ -162,9 +161,9 @@ async function pollStats() {
     const hits = st.nppes_cache_hit || 0, calls = st.nppes_api_call || 0;
     const thits = st.triage_cache_hit || 0, tcalls = st.triage_llm_call || 0;
     statsEl.innerHTML =
-      `🟢 Redis · bookings ${st.bookings || 0} · emergencies ${st.emergencies || 0} ` +
-      `· deposits ${st.payments_paid || 0}/${st.payments_requested || 0} ` +
-      `· provider cache ${hits}/${hits + calls} · triage cache ${thits}/${thits + tcalls}`;
+      `Redis | bookings ${st.bookings || 0} | emergencies ${st.emergencies || 0} ` +
+      `| deposits ${st.payments_paid || 0}/${st.payments_requested || 0} ` +
+      `| provider cache ${hits}/${hits + calls} | triage cache ${thits}/${thits + tcalls}`;
   } catch (e) { /* ignore */ }
 }
 pollStats();

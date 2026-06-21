@@ -8,6 +8,7 @@
   <style>
     .dash { width: min(100% - 28px, 1080px); margin: 0 auto; padding: 24px 0 40px; }
     .dash-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+    .dash-head .brand { align-items: center; }
     .dash-head h1 { margin: 0; font-size: 22px; }
     .dash-head .tag { margin: 4px 0 0; color: var(--muted, #68756e); font-size: 13px; }
     .live { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--muted, #68756e);
@@ -49,9 +50,12 @@
 <body>
   <div class="dash">
     <div class="dash-head">
-      <div>
-        <h1>⊕ CareLoop — Project Dashboard</h1>
-        <p class="tag" id="tagline"></p>
+      <div class="brand">
+        <span class="logo" aria-hidden="true"><span class="loop-mark"><span></span></span></span>
+        <div>
+          <h1>CareLoop Dashboard</h1>
+          <p class="tag" id="tagline"></p>
+        </div>
       </div>
       <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap">
         <a href="/" class="navbtn" title="Open the voice/chat app" aria-label="Open voice chat">← Chat</a>

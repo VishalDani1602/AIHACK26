@@ -1,4 +1,15 @@
 :root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-md: 15px;
+  --text-lg: 18px;
+  --text-xl: 22px;
   --bg: #f6f8f6;
   --paper: #ffffff;
   --paper-soft: #fbfcfb;
@@ -74,7 +85,7 @@ select {
   width: min(100% - 28px, 780px);
   min-height: 100vh;
   margin: 0 auto;
-  padding: 24px 0 28px;
+  padding: var(--space-5) 0 28px;
   display: flex;
   flex-direction: column;
 }
@@ -83,14 +94,14 @@ header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 18px;
-  margin-bottom: 14px;
+  gap: var(--space-4);
+  margin-bottom: var(--space-3);
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
   min-width: 0;
 }
 
@@ -104,32 +115,68 @@ header {
   border-radius: var(--radius);
   background: var(--paper);
   color: var(--accent);
-  font-size: 24px;
-  font-weight: 700;
   box-shadow: var(--shadow);
+}
+
+.loop-mark {
+  width: 29px;
+  height: 18px;
+  display: block;
+  position: relative;
+}
+
+.loop-mark::before,
+.loop-mark::after {
+  content: "";
+  width: 15px;
+  height: 15px;
+  position: absolute;
+  top: 0;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  background: var(--paper);
+}
+
+.loop-mark::before {
+  left: 0;
+}
+
+.loop-mark::after {
+  right: 0;
+}
+
+.loop-mark span {
+  width: 9px;
+  height: 2px;
+  position: absolute;
+  left: 10px;
+  top: 8px;
+  z-index: 1;
+  border-radius: 999px;
+  background: var(--accent);
 }
 
 h1 {
   margin: 0;
   color: var(--ink);
-  font-size: 22px;
+  font-size: var(--text-xl);
   line-height: 1.1;
   letter-spacing: 0;
 }
 
 .tag {
-  margin: 5px 0 0;
+  margin: var(--space-1) 0 0;
   color: var(--muted);
-  font-size: 12.5px;
+  font-size: var(--text-sm);
   line-height: 1.35;
 }
 
 .controls {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 .controls label {
@@ -182,10 +229,10 @@ h1 {
 .chat {
   flex: 1;
   min-height: 360px;
-  padding: 18px;
+  padding: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-3);
   overflow-y: auto;
   background: var(--paper);
   border: 1px solid var(--line);
@@ -282,12 +329,12 @@ h1 {
 
 .bubble {
   max-width: min(82%, 620px);
-  padding: 12px 14px;
+  padding: var(--space-3) var(--space-4);
   background: var(--paper-soft);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   color: var(--ink);
-  font-size: 15px;
+  font-size: var(--text-md);
   line-height: 1.5;
 }
 
@@ -317,8 +364,8 @@ body.large-text .bubble {
 .emergency-card {
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr);
-  gap: 14px;
-  padding: 16px;
+  gap: var(--space-3);
+  padding: var(--space-4);
 }
 
 .emergency-mark {
@@ -337,7 +384,7 @@ body.large-text .bubble {
 .emergency-copy h2 {
   margin: 0;
   color: #6d1a14;
-  font-size: 18px;
+  font-size: var(--text-lg);
   line-height: 1.2;
 }
 
@@ -400,7 +447,7 @@ body.large-text .bubble {
 }
 
 .care-card {
-  padding: 14px;
+  padding: var(--space-4);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--paper);
@@ -599,10 +646,10 @@ body.large-text .bubble {
 }
 
 .composer {
-  margin-top: 14px;
+  margin-top: var(--space-3);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-2);
   align-items: stretch;
 }
 
@@ -796,7 +843,7 @@ body.large-text .bubble {
 }
 
 footer {
-  margin-top: 12px;
+  margin-top: var(--space-3);
   display: flex;
   flex-direction: column;
   gap: 4px;

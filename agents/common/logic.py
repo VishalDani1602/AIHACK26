@@ -100,6 +100,8 @@ def triage(session_id: str, symptoms: str, patient_age=None) -> TriageResult:
         urgency = cached["urgency"]
         advice = cached["advice"]
         llm_flags = cached.get("red_flags", [])
+        condition = cached.get("condition", "")
+        chronic = cached.get("chronic", False)
     else:
         data = asi.chat_json(
             TRIAGE_SYSTEM,
@@ -112,15 +114,19 @@ def triage(session_id: str, symptoms: str, patient_age=None) -> TriageResult:
             urgency = data.get("urgency", "routine")
             advice = data.get("advice", "")
             llm_flags = data.get("red_flags", []) or []
+            condition = (data.get("condition") or "").strip()
+            chronic = bool(data.get("chronic", False))
         else:
             specialty = _heuristic_specialty(symptoms)
             urgency = "routine"
             advice = "Based on what you've shared, a visit with the right clinician is a good next step."
             llm_flags = []
+            condition = ""
+            chronic = False
         store.incr_stat("triage_llm_call")
         store.cache_set_json(cache_key, {
-            "specialty": specialty, "urgency": urgency,
-            "advice": advice, "red_flags": llm_flags}, ttl=3600)
+            "specialty": specialty, "urgency": urgency, "advice": advice,
+            "red_flags": llm_flags, "condition": condition, "chronic": chronic}, ttl=3600)
 
     specialty, taxonomy = _specialty_to_taxonomy(specialty)
     emergency = urgency == "emergency"
@@ -132,6 +138,8 @@ def triage(session_id: str, symptoms: str, patient_age=None) -> TriageResult:
         red_flags=llm_flags,
         advice=advice,
         emergency=emergency,
+        condition=condition,
+        chronic=chronic,
     )
 
 

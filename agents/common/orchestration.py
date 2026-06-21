@@ -16,6 +16,8 @@ from .models import (
     BookingResult,
     CostRequest,
     CostResult,
+    EvidenceRequest,
+    EvidenceResult,
     PaymentLinkRequest,
     PaymentLinkResult,
     PaymentVerifyRequest,
@@ -36,6 +38,7 @@ class Specialists(Protocol):
     async def book(self, req: BookingRequest) -> Optional[BookingResult]: ...
     async def create_payment(self, req: PaymentLinkRequest) -> Optional[PaymentLinkResult]: ...
     async def verify_payment(self, req: PaymentVerifyRequest) -> Optional[PaymentVerifyResult]: ...
+    async def get_evidence(self, req: EvidenceRequest) -> Optional[EvidenceResult]: ...
 
 
 def new_state() -> Dict:
@@ -54,6 +57,8 @@ def new_state() -> Dict:
         "payment": None,   # {"stripe_session_id", "checkout_url", "amount"}
         "skip_payment": False,
         "deposit_paid": 0.0,
+        "medications": "",
+        "condition": "",
     }
 
 
@@ -126,7 +131,7 @@ def _llm_extract(state: Dict, text: str) -> str:
     )
     if not data:
         return _naive_extract(state, text)
-    for key in ["symptoms", "patient_name", "city", "state", "postal_code", "insurance"]:
+    for key in ["symptoms", "patient_name", "city", "state", "postal_code", "insurance", "medications"]:
         val = (data.get(key) or "").strip() if isinstance(data.get(key), str) else data.get(key)
         if val:
             state[key] = val
@@ -210,6 +215,8 @@ async def handle_turn(state: Dict, user_text: str, specialists: Specialists) -> 
                            "specialty": tri.recommended_specialty})
     state["specialty"] = tri.recommended_specialty
     state["taxonomy"] = tri.taxonomy
+    state["condition"] = tri.condition
+    state["chronic"] = tri.chronic
 
     # Need a location to search for providers.
     if not (state.get("city") or state.get("postal_code")):
@@ -246,6 +253,20 @@ async def handle_turn(state: Dict, user_text: str, specialists: Specialists) -> 
     }
     state["stage"] = "confirming"
 
+    # For a serious/chronic condition (or if meds were mentioned), consult the
+    # clinical-evidence agent for recruiting trials + drug-safety notes.
+    evidence_text = ""
+    if state.get("chronic") or state.get("medications"):
+        ev = await specialists.get_evidence(EvidenceRequest(
+            session_id=session_id, condition=state.get("condition", ""),
+            medications=state.get("medications", ""),
+            city=state.get("city", ""), state=state.get("state", ""), limit=3))
+        evidence_text = _evidence_section(ev)
+        if ev and (ev.trials or ev.drug_notes):
+            store.audit("evidence", {"session": session_id, "condition": state.get("condition", ""),
+                                     "trials": len(ev.trials), "drugs": len(ev.drug_notes)})
+            store.incr_stat("evidence_lookups")
+
     ins_note = ""
     if state.get("insurance"):
         ins_note = " that accepts your plan" if top.accepts_insurance else " (please confirm they take your plan)"
@@ -254,7 +275,8 @@ async def handle_turn(state: Dict, user_text: str, specialists: Specialists) -> 
         f"The best match near {state.get('city') or state.get('postal_code')}{ins_note} is "
         f"**{top.name}** ({top.specialty}) at {top.address}, "
         f"with an opening **{top.next_slot}**.\n\n"
-        f"Estimated cost: **${cost_low:.0f}–${cost_high:.0f}**. {cost_why}\n\n"
+        f"Estimated cost: **${cost_low:.0f}–${cost_high:.0f}**. {cost_why}\n"
+        f"{evidence_text}\n"
         f"Want me to book {top.next_slot} for you?"
     )
     return _out(state, reply, "confirming")
@@ -341,6 +363,20 @@ async def _do_booking(state: Dict, specialists: Specialists) -> Dict:
     return _out(state, reply, "done")
 
 
+def _evidence_section(ev) -> str:
+    """Render a concise clinical-evidence block (trials + drug safety) for the reply."""
+    if not ev or (not ev.trials and not ev.drug_notes):
+        return ""
+    lines = ["\n🔬 **Clinical evidence** (options to discuss with your doctor):"]
+    for t in ev.trials[:2]:
+        loc = f" — {t.location}" if t.location else ""
+        lines.append(f"• Trial: {t.title} ({t.phase}){loc}\n  {t.url}")
+    for d in ev.drug_notes[:2]:
+        lines.append(f"• 💊 {d.drug}: {d.info}")
+    lines.append("_Source: ClinicalTrials.gov + openFDA._")
+    return "\n".join(lines) + "\n"
+
+
 def _out(state: Dict, reply: str, stage: str, emergency: bool = False) -> Dict:
     state["stage"] = stage
     return {"reply": reply, "stage": stage, "emergency": emergency}
@@ -392,3 +428,18 @@ class LocalSpecialists:
     async def verify_payment(self, req: PaymentVerifyRequest):
         paid, status = stripe_pay.verify(req.stripe_session_id)
         return PaymentVerifyResult(session_id=req.session_id, paid=paid, status=status)
+
+    async def get_evidence(self, req: EvidenceRequest):
+        from . import clinical
+        trials, drug_notes = [], []
+        try:
+            if req.condition:
+                trials = clinical.search_trials(req.condition, req.state, req.city, req.limit)
+        except Exception:
+            trials = []
+        for med in [m.strip() for m in (req.medications or "").split(",") if m.strip()][:3]:
+            try:
+                drug_notes.extend(clinical.drug_safety(med))
+            except Exception:
+                pass
+        return EvidenceResult(session_id=req.session_id, trials=trials, drug_notes=drug_notes)

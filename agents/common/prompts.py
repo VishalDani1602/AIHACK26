@@ -27,6 +27,10 @@ ALLOWED_SPECIALTIES = [
     "Neurology",
     "Ophthalmology",
     "Dentistry",
+    "Oncology",
+    "Endocrinology",
+    "Rheumatology",
+    "Nephrology",
 ]
 
 TRIAGE_SYSTEM = f"""You are the triage specialist in a healthcare-navigation system.
@@ -39,6 +43,11 @@ Return ONLY a JSON object with these keys:
 - "red_flags": array of short strings for any warning signs you noticed (may be empty)
 - "advice": one or two plain-language sentences (<= 40 words), 6th-grade reading level,
   warm and calm. No diagnosis. If urgency is "emergency", tell them to call 911.
+- "condition": a concise medical condition name ONLY if the person clearly states or
+  strongly implies a diagnosed/named condition (e.g., "type 2 diabetes", "breast cancer",
+  "COPD", "rheumatoid arthritis"); otherwise "".
+- "chronic": true ONLY if "condition" is a serious or chronic illness where looking up
+  clinical trials / evidence would genuinely help; otherwise false.
 
 Default to a safer (more urgent) category when unsure. Prefer "Primary Care" or
 "Urgent Care" unless a specialist is clearly indicated."""
@@ -59,6 +68,7 @@ Return ONLY a JSON object:
   "state": "2-letter US state if given/derivable, else empty",
   "postal_code": "5-digit zip if given, else empty",
   "insurance": "one of: medicare, medicaid, ppo, hmo, high_deductible, uninsured, or empty if unknown",
+  "medications": "comma-separated medications the person mentions taking, else empty",
   "intent": "one of: provide_info, confirm, decline, restart, smalltalk"
 }
 

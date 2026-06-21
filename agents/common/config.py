@@ -30,6 +30,7 @@ SEEDS = {
     "cost": os.getenv("COST_SEED", "careloop-cost-seed-2026"),
     "scheduler": os.getenv("SCHEDULER_SEED", "careloop-scheduler-seed-2026"),
     "payment": os.getenv("PAYMENT_SEED", "careloop-payment-seed-2026"),
+    "evidence": os.getenv("EVIDENCE_SEED", "careloop-evidence-seed-2026"),
 }
 
 PORTS = {
@@ -39,6 +40,7 @@ PORTS = {
     "cost": int(os.getenv("COST_PORT", "8003")),
     "scheduler": int(os.getenv("SCHEDULER_PORT", "8004")),
     "payment": int(os.getenv("PAYMENT_PORT", "8005")),
+    "evidence": int(os.getenv("EVIDENCE_PORT", "8006")),
 }
 
 
@@ -61,6 +63,7 @@ _ENV_ADDR = {
     "cost": "COST_AGENT_ADDRESS",
     "scheduler": "SCHEDULER_AGENT_ADDRESS",
     "payment": "PAYMENT_AGENT_ADDRESS",
+    "evidence": "EVIDENCE_AGENT_ADDRESS",
     "orchestrator": "ORCHESTRATOR_AGENT_ADDRESS",
 }
 for _name, _var in _ENV_ADDR.items():

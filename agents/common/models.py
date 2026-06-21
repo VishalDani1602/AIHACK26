@@ -23,6 +23,8 @@ class TriageResult(Model):
     red_flags: List[str] = []
     advice: str = ""
     emergency: bool = False      # True -> 911 escalation, bypass booking
+    condition: str = ""          # concise condition name if identifiable (drives evidence lookup)
+    chronic: bool = False        # serious/chronic -> consult the clinical-evidence agent
 
 
 # ---- Provider finder ----
@@ -81,6 +83,38 @@ class BookingResult(Model):
     confirmation_code: str
     summary: str
     ics: str = ""               # iCalendar text for the appointment
+
+
+# ---- Clinical evidence (trials + drug safety) ----
+class Trial(Model):
+    nct_id: str
+    title: str
+    status: str = ""
+    phase: str = ""
+    location: str = ""
+    url: str = ""
+
+
+class DrugNote(Model):
+    drug: str
+    info: str = ""
+    url: str = ""
+
+
+class EvidenceRequest(Model):
+    session_id: str
+    condition: str = ""
+    medications: str = ""        # comma-separated
+    city: str = ""
+    state: str = ""
+    limit: int = 3
+
+
+class EvidenceResult(Model):
+    session_id: str
+    trials: List[Trial] = []
+    drug_notes: List[DrugNote] = []
+    note: str = ""
 
 
 # ---- Payment (Stripe copay/deposit) ----

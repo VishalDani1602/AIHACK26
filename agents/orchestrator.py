@@ -26,6 +26,7 @@ from agents.common import config
 from agents.common.models import (
     BookingResult,
     CostResult,
+    EvidenceResult,
     PaymentLinkResult,
     PaymentVerifyResult,
     ProviderResult,
@@ -97,6 +98,9 @@ class AgentSpecialists:
 
     async def verify_payment(self, req):
         return await self._call("payment", req, PaymentVerifyResult, self.local.verify_payment)
+
+    async def get_evidence(self, req):
+        return await self._call("evidence", req, EvidenceResult, self.local.get_evidence)
 
 
 # --------------------------------------------------------------------------- #

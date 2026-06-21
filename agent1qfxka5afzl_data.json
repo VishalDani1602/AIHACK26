@@ -142,33 +142,21 @@
         "session_id": "voice:web-b2gboby4"
     },
     "agent1qtxva8p8rt4jeds9ncv84nz0gn5qguemsp69ntnvdfta50eaqxf3v0gfr2s": {
-        "stage": "confirming",
-        "symptoms": "fever and cold for 3 days",
+        "stage": "collecting",
+        "symptoms": "",
         "patient_age": null,
         "patient_name": "",
         "city": "",
         "state": "",
-        "postal_code": "94103",
+        "postal_code": "",
         "insurance": "",
-        "specialty": "Primary Care",
-        "taxonomy": "Family Medicine",
-        "pending": {
-            "provider": {
-                "name": "Alexander Marsh, M.D., Pc",
-                "specialty": "Family Medicine",
-                "address": "95 3RD ST FL 2, SAN FRANCISCO, CA, 94103",
-                "phone": "844-504-0402",
-                "accepts_insurance": true,
-                "next_slot": "in 2 days at 10:00 AM",
-                "npi": "1932069788"
-            },
-            "cost_low": 108.0,
-            "cost_high": 216.0,
-            "cost_why": "Without your plan details, a primary care visit typically bills around $108-$216. Share your insurance for a tighter estimate.",
-            "visit_type": "primary_care"
-        },
-        "session_id": "agent1qtxva8p8rt4jeds9ncv84nz0gn5qguemsp69ntnvdfta50eaqxf3v0gfr2s",
-        "last_booking_ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//CareLoop//EN\r\nBEGIN:VEVENT\r\nUID:CL-5QIV1S@careloop\r\nDTSTAMP:20260621T113502Z\r\nDTSTART:20260623T100000Z\r\nDTEND:20260623T103000Z\r\nSUMMARY:Appointment with Alexander Marsh, M.D., Pc\r\nLOCATION:95 3RD ST FL 2, SAN FRANCISCO, CA, 94103\r\nDESCRIPTION:CareLoop booking CL-5QIV1S. Reason: fever and cold for 3 days\r\nEND:VEVENT\r\nEND:VCALENDAR"
+        "specialty": "",
+        "taxonomy": "",
+        "pending": null,
+        "payment": null,
+        "skip_payment": false,
+        "deposit_paid": 0.0,
+        "session_id": "agent1qtxva8p8rt4jeds9ncv84nz0gn5qguemsp69ntnvdfta50eaqxf3v0gfr2s"
     },
     "voice:pay1": {
         "stage": "awaiting_payment",

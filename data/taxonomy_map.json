@@ -14,5 +14,9 @@
   "Pulmonology":         {"taxonomy": "Pulmonary Disease",          "visit_type": "specialist"},
   "Neurology":           {"taxonomy": "Neurology",                  "visit_type": "specialist"},
   "Ophthalmology":       {"taxonomy": "Ophthalmology",              "visit_type": "specialist"},
-  "Dentistry":           {"taxonomy": "Dentist",                    "visit_type": "specialist"}
+  "Dentistry":           {"taxonomy": "Dentist",                    "visit_type": "specialist"},
+  "Oncology":            {"taxonomy": "Hematology & Oncology",      "visit_type": "specialist"},
+  "Endocrinology":       {"taxonomy": "Endocrinology",              "visit_type": "specialist"},
+  "Rheumatology":        {"taxonomy": "Rheumatology",               "visit_type": "specialist"},
+  "Nephrology":          {"taxonomy": "Nephrology",                 "visit_type": "specialist"}
 }

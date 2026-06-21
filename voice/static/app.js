@@ -13,6 +13,7 @@ const composer = document.querySelector(".composer");
 const meterBars = Array.from(document.querySelectorAll(".voice-meter span"));
 const largeTextToggle = document.getElementById("largeTextToggle");
 const contrastToggle = document.getElementById("contrastToggle");
+const darkModeToggle = document.getElementById("darkModeToggle");
 const reduceMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
 
 let sessionId = "web-" + Math.random().toString(36).slice(2, 10);
@@ -385,9 +386,9 @@ function escapeAttr(value) {
 
 function readDisplayPrefs() {
   try {
-    return { largeText: false, highContrast: false, ...JSON.parse(localStorage.getItem(DISPLAY_PREF_KEY) || "{}") };
+    return { largeText: false, highContrast: false, darkMode: false, ...JSON.parse(localStorage.getItem(DISPLAY_PREF_KEY) || "{}") };
   } catch (e) {
-    return { largeText: false, highContrast: false };
+    return { largeText: false, highContrast: false, darkMode: false };
   }
 }
 
@@ -398,8 +399,10 @@ function saveDisplayPrefs() {
 function applyDisplayPrefs() {
   document.body.classList.toggle("large-text", displayPrefs.largeText);
   document.body.classList.toggle("high-contrast", displayPrefs.highContrast);
+  document.body.classList.toggle("dark-mode", displayPrefs.darkMode);
   largeTextToggle?.setAttribute("aria-pressed", String(displayPrefs.largeText));
   contrastToggle?.setAttribute("aria-pressed", String(displayPrefs.highContrast));
+  darkModeToggle?.setAttribute("aria-pressed", String(displayPrefs.darkMode));
 }
 
 function toggleDisplayPref(key) {
@@ -449,6 +452,7 @@ sendBtn.onclick = sendText;
 textInput.addEventListener("keydown", (e) => { if (e.key === "Enter") sendText(); });
 largeTextToggle?.addEventListener("click", () => toggleDisplayPref("largeText"));
 contrastToggle?.addEventListener("click", () => toggleDisplayPref("highContrast"));
+darkModeToggle?.addEventListener("click", () => toggleDisplayPref("darkMode"));
 applyDisplayPrefs();
 
 async function startRecording() {

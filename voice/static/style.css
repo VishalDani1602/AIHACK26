@@ -56,6 +56,23 @@ body.high-contrast {
   --shadow: none;
 }
 
+body.dark-mode:not(.high-contrast) {
+  --bg: #101713;
+  --paper: #18211c;
+  --paper-soft: #1d2a23;
+  --line: #33443a;
+  --line-strong: #5b7568;
+  --ink: #eef6f0;
+  --muted: #bac8c0;
+  --accent: #6bd3a3;
+  --accent-soft: #203c31;
+  --focus: #8ef0bd;
+  --patient: #192840;
+  --patient-line: #6f8cb6;
+  --emergency-soft: #3a1714;
+  --shadow: 0 18px 50px rgba(0, 0, 0, .32);
+}
+
 body.large-text {
   font-size: 18px;
 }
@@ -219,6 +236,30 @@ h1 {
   color: var(--accent);
 }
 
+.theme-toggle span {
+  width: 17px;
+  height: 17px;
+  display: block;
+  position: relative;
+  border-radius: 50%;
+  background: var(--ink);
+}
+
+.theme-toggle span::after {
+  content: "";
+  width: 13px;
+  height: 13px;
+  position: absolute;
+  top: -2px;
+  right: -3px;
+  border-radius: 50%;
+  background: var(--paper);
+}
+
+.theme-toggle[aria-pressed="true"] span {
+  background: var(--accent);
+}
+
 .newchat:hover,
 .icon-toggle:hover,
 .text-row button:hover,
@@ -359,6 +400,13 @@ body.large-text .bubble {
   border-color: #efaca4;
   color: #6d1a14;
   overflow: hidden;
+}
+
+body.dark-mode:not(.high-contrast) .msg.bot.emergency .bubble,
+body.dark-mode:not(.high-contrast) .emergency-copy h2,
+body.dark-mode:not(.high-contrast) .emergency-copy p,
+body.dark-mode:not(.high-contrast) .emergency-detail {
+  color: #ffd8d4;
 }
 
 .emergency-card {
@@ -517,6 +565,11 @@ body.large-text .bubble {
 .cost-chip {
   background: #eef5ff;
   color: #28558c;
+}
+
+body.dark-mode:not(.high-contrast) .cost-chip {
+  background: #1d3553;
+  color: #b9d9ff;
 }
 
 .trial-group summary {

@@ -1,6 +1,19 @@
 // CareLoop project dashboard — polls /api/dashboard and renders live state.
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const displayPrefs = readDisplayPrefs();
+
+function readDisplayPrefs() {
+  try {
+    return JSON.parse(localStorage.getItem("careloopDisplayPrefs") || "{}");
+  } catch (e) {
+    return {};
+  }
+}
+
+document.body.classList.toggle("large-text", Boolean(displayPrefs.largeText));
+document.body.classList.toggle("high-contrast", Boolean(displayPrefs.highContrast));
+document.body.classList.toggle("dark-mode", Boolean(displayPrefs.darkMode));
 
 function pct(hits, calls) {
   const tot = hits + calls;

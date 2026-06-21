@@ -15,6 +15,7 @@
     .dot { width: 9px; height: 9px; border-radius: 50%; background: #c0392b; display: inline-block; }
     .dot.ok { background: var(--accent, #1f7a58); box-shadow: 0 0 0 0 rgba(31,122,88,.5); animation: lp 1.6s infinite; }
     @keyframes lp { 0%{box-shadow:0 0 0 0 rgba(31,122,88,.45)} 70%{box-shadow:0 0 0 7px rgba(31,122,88,0)} 100%{box-shadow:0 0 0 0 rgba(31,122,88,0)} }
+    @media (prefers-reduced-motion: reduce) { .dot.ok { animation: none; } }
     .section-title { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted, #68756e); margin: 24px 0 10px; }
     .grid { display: grid; gap: 12px; }
     .kpis { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
@@ -53,8 +54,8 @@
         <p class="tag" id="tagline"></p>
       </div>
       <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap">
-        <a href="/" class="navbtn" title="Open the voice/chat app">← Chat</a>
-        <span class="live"><span class="dot" id="liveDot"></span><span id="liveText">connecting…</span></span>
+        <a href="/" class="navbtn" title="Open the voice/chat app" aria-label="Open voice chat">← Chat</a>
+        <span class="live" role="status" aria-live="polite"><span class="dot" id="liveDot"></span><span id="liveText">connecting…</span></span>
       </div>
     </div>
 

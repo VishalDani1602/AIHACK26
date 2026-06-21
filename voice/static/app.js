@@ -3,6 +3,7 @@ const chat = document.getElementById("chat");
 const micBtn = document.getElementById("mic");
 const micLabel = micBtn.querySelector(".mic-label");
 const statusEl = document.getElementById("status");
+const srUpdates = document.getElementById("srUpdates");
 const viaEl = document.getElementById("via");
 const langSel = document.getElementById("lang");
 const player = document.getElementById("player");
@@ -10,6 +11,8 @@ const textInput = document.getElementById("textInput");
 const sendBtn = document.getElementById("sendBtn");
 const composer = document.querySelector(".composer");
 const meterBars = Array.from(document.querySelectorAll(".voice-meter span"));
+const largeTextToggle = document.getElementById("largeTextToggle");
+const contrastToggle = document.getElementById("contrastToggle");
 
 let sessionId = "web-" + Math.random().toString(36).slice(2, 10);
 let mediaRecorder = null;
@@ -21,6 +24,8 @@ let audioContext = null;
 let analyser = null;
 let meterFrame = null;
 let meterData = null;
+const DISPLAY_PREF_KEY = "careloopDisplayPrefs";
+const displayPrefs = readDisplayPrefs();
 
 const EXAMPLE_PROMPTS = [
   "My dad has a bad cough and fever",
@@ -106,6 +111,7 @@ async function sendTurn(promise, opts = {}) {
 }
 
 function addBotReply(data) {
+  announceBotReply(data.reply);
   if (data.emergency) {
     addMessage("bot", data.reply, { emergency: true });
     return;
@@ -154,7 +160,7 @@ function renderProviderCard(card) {
   const badge = provider.accepts_insurance === false ? "Confirm plan" : "Accepts your plan";
   const badgeClass = provider.accepts_insurance === false ? "warn" : "";
   return `
-    <section class="care-card provider-card">
+    <section class="care-card provider-card" aria-label="Recommended provider">
       <div class="card-title-row">
         <div>
           <h3>${escapeHtml(provider.name || "Recommended provider")}</h3>
@@ -195,7 +201,7 @@ function renderTrialsCard(card) {
 function renderPaymentCard(card) {
   const payment = card.payment || card;
   return `
-    <section class="care-card payment-card">
+    <section class="care-card payment-card" aria-label="Payment step">
       <h3>Hold the appointment</h3>
       <p>${escapeHtml(payment.amount_usd ? `Refundable deposit: $${payment.amount_usd}` : "Secure Stripe checkout")}</p>
       ${payment.checkout_url ? `<a class="card-link primary" href="${escapeAttr(payment.checkout_url)}" target="_blank" rel="noopener">Open Stripe checkout</a>` : ""}
@@ -206,7 +212,7 @@ function renderPaymentCard(card) {
 function renderBookingCard(card) {
   const booking = card.booking || card;
   return `
-    <section class="care-card booking-card">
+    <section class="care-card booking-card" aria-label="Booking confirmation">
       <div class="card-title-row">
         <div>
           <h3>Booking confirmed</h3>
@@ -246,7 +252,7 @@ function renderActions(actions) {
   return `
     <div class="quick-actions">
       ${actions.map((action) => `
-        <button type="button" data-send="${escapeAttr(action.send)}" class="${action.primary ? "primary" : ""}">
+        <button type="button" data-send="${escapeAttr(action.send)}" class="${action.primary ? "primary" : ""}" aria-label="${escapeAttr(action.label)}">
           ${escapeHtml(action.label)}
         </button>
       `).join("")}
@@ -366,6 +372,45 @@ function escapeAttr(value) {
   return String(value || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 }
 
+function readDisplayPrefs() {
+  try {
+    return { largeText: false, highContrast: false, ...JSON.parse(localStorage.getItem(DISPLAY_PREF_KEY) || "{}") };
+  } catch (e) {
+    return { largeText: false, highContrast: false };
+  }
+}
+
+function saveDisplayPrefs() {
+  localStorage.setItem(DISPLAY_PREF_KEY, JSON.stringify(displayPrefs));
+}
+
+function applyDisplayPrefs() {
+  document.body.classList.toggle("large-text", displayPrefs.largeText);
+  document.body.classList.toggle("high-contrast", displayPrefs.highContrast);
+  largeTextToggle?.setAttribute("aria-pressed", String(displayPrefs.largeText));
+  contrastToggle?.setAttribute("aria-pressed", String(displayPrefs.highContrast));
+}
+
+function toggleDisplayPref(key) {
+  displayPrefs[key] = !displayPrefs[key];
+  saveDisplayPrefs();
+  applyDisplayPrefs();
+}
+
+function plainText(value) {
+  const div = document.createElement("div");
+  div.innerHTML = render(value || "");
+  return div.textContent.replace(/\s+/g, " ").trim();
+}
+
+function announceBotReply(text) {
+  if (!srUpdates) return;
+  srUpdates.textContent = "";
+  window.setTimeout(() => {
+    srUpdates.textContent = plainText(text).slice(0, 900);
+  }, 20);
+}
+
 function setEmergencyFocus(active) {
   if (emergencyFocusTimer) clearTimeout(emergencyFocusTimer);
   composer.classList.toggle("composer-emergency", active);
@@ -391,6 +436,9 @@ async function sendText() {
 
 sendBtn.onclick = sendText;
 textInput.addEventListener("keydown", (e) => { if (e.key === "Enter") sendText(); });
+largeTextToggle?.addEventListener("click", () => toggleDisplayPref("largeText"));
+contrastToggle?.addEventListener("click", () => toggleDisplayPref("highContrast"));
+applyDisplayPrefs();
 
 async function startRecording() {
   try {
@@ -414,6 +462,7 @@ async function startRecording() {
     mediaRecorder.start();
     recording = true;
     micBtn.classList.add("recording");
+    micBtn.setAttribute("aria-label", "Stop voice recording");
     micLabel.textContent = "Listening - tap to stop";
     setStatus("Recording");
   } catch (e) {
@@ -426,6 +475,7 @@ function stopRecording() {
     mediaRecorder.stop();
     recording = false;
     micBtn.classList.remove("recording");
+    micBtn.setAttribute("aria-label", "Start voice recording");
     micLabel.textContent = "Speak";
   }
 }

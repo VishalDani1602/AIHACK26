@@ -8,6 +8,7 @@
   --muted: #68756e;
   --accent: #1f7a58;
   --accent-soft: #e4f1eb;
+  --focus: #0d6f4e;
   --patient: #eff5ff;
   --patient-line: #b8c8e6;
   --emergency: #b42318;
@@ -17,6 +18,36 @@
 }
 
 * { box-sizing: border-box; }
+
+.sr-only {
+  width: 1px;
+  height: 1px;
+  position: absolute;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+body.high-contrast {
+  --bg: #ffffff;
+  --paper: #ffffff;
+  --paper-soft: #f8faf8;
+  --line: #728078;
+  --line-strong: #2f4038;
+  --ink: #07100c;
+  --muted: #36443d;
+  --accent: #005f42;
+  --accent-soft: #d8efe5;
+  --focus: #003f2b;
+  --patient: #eef6ff;
+  --patient-line: #4d6f9a;
+  --shadow: none;
+}
+
+body.large-text {
+  font-size: 18px;
+}
 
 html {
   min-height: 100%;
@@ -106,9 +137,10 @@ h1 {
 }
 
 .controls select,
+.icon-toggle,
 .newchat,
 .text-row button {
-  min-height: 36px;
+  min-height: 44px;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius);
   background: var(--paper);
@@ -124,7 +156,24 @@ h1 {
   cursor: pointer;
 }
 
+.icon-toggle {
+  min-width: 44px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.icon-toggle[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
 .newchat:hover,
+.icon-toggle:hover,
 .text-row button:hover,
 .controls select:hover {
   border-color: var(--accent);
@@ -198,6 +247,10 @@ h1 {
   line-height: 1.5;
 }
 
+body.large-text .bubble {
+  font-size: 17px;
+}
+
 .msg.user .bubble {
   background: var(--patient);
   border-color: var(--patient-line);
@@ -269,11 +322,6 @@ h1 {
   color: #ffffff;
   font-weight: 800;
   text-decoration: none;
-}
-
-.call911:focus-visible {
-  outline: 3px solid #ffd7d2;
-  outline-offset: 2px;
 }
 
 .bubble .note {
@@ -425,7 +473,7 @@ h1 {
 }
 
 .card-link {
-  min-height: 38px;
+  min-height: 44px;
   margin-top: 12px;
   display: inline-flex;
   align-items: center;
@@ -452,7 +500,7 @@ h1 {
 }
 
 .quick-actions button {
-  min-height: 38px;
+  min-height: 44px;
   padding: 0 12px;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius);
@@ -485,7 +533,7 @@ h1 {
 }
 
 .prompt-chips button {
-  min-height: 38px;
+  min-height: 44px;
   padding: 0 12px;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius);
@@ -634,7 +682,7 @@ h1 {
 .text-row input {
   flex: 1;
   min-width: 0;
-  min-height: 42px;
+  min-height: 44px;
   padding: 0 12px;
   background: var(--paper);
   color: var(--ink);
@@ -647,16 +695,22 @@ h1 {
   color: #89958f;
 }
 
-.text-row input:focus,
-.controls select:focus,
-.newchat:focus,
-.prompt-chips button:focus,
-.quick-actions button:focus,
-.card-link:focus,
-.text-row button:focus,
-.mic:focus {
-  outline: 2px solid var(--accent-soft);
-  outline-offset: 2px;
+.text-row input:focus-visible,
+.controls select:focus-visible,
+.newchat:focus-visible,
+.icon-toggle:focus-visible,
+.prompt-chips button:focus-visible,
+.quick-actions button:focus-visible,
+.card-link:focus-visible,
+.call911:focus-visible,
+.trial-card:focus-visible,
+.navbtn:focus-visible,
+.reply-details summary:focus-visible,
+.trial-group summary:focus-visible,
+.text-row button:focus-visible,
+.mic:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
 }
 
 .text-row button {
@@ -717,23 +771,23 @@ footer {
 
   .controls {
     display: grid;
-    grid-template-columns: 84px minmax(0, 1fr);
-    align-items: end;
+    grid-template-columns: repeat(4, minmax(44px, max-content)) minmax(0, 1fr);
+    align-items: center;
     gap: 6px 8px;
   }
 
   .controls label {
-    grid-column: 2;
+    grid-column: 1 / -1;
     font-size: 12px;
   }
 
   .newchat {
-    grid-column: 1;
-    grid-row: 2;
+    grid-column: auto;
+    grid-row: auto;
   }
 
   .controls select {
-    grid-column: 2;
+    grid-column: 1 / -1;
     width: 100%;
   }
 
@@ -771,13 +825,13 @@ footer {
   }
 
   .text-row button {
-    min-height: 40px;
+    min-height: 44px;
   }
 }
 
 /* nav button: switch between chat ( / ) and dashboard ( /dashboard ) */
 .navbtn {
-  min-height: 36px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -799,7 +853,7 @@ footer {
 
 @media (max-width: 680px) {
   .controls .navbtn {
-    grid-column: 1;
-    grid-row: 1;
+    grid-column: auto;
+    grid-row: auto;
   }
 }

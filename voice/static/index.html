@@ -17,10 +17,16 @@
         </div>
       </div>
       <div class="controls">
-        <a href="/dashboard" class="navbtn" title="Open the project dashboard">Dashboard</a>
-        <button id="newChat" class="newchat" title="Start a new conversation">New</button>
+        <a href="/dashboard" class="navbtn" title="Open the project dashboard" aria-label="Open project dashboard">Dashboard</a>
+        <button id="largeTextToggle" class="icon-toggle" type="button" aria-label="Use large text" aria-pressed="false" title="Large text">
+          <span aria-hidden="true">Aa</span>
+        </button>
+        <button id="contrastToggle" class="icon-toggle" type="button" aria-label="Use high contrast" aria-pressed="false" title="High contrast">
+          <span aria-hidden="true">HC</span>
+        </button>
+        <button id="newChat" class="newchat" type="button" title="Start a new conversation" aria-label="Start a new conversation">New</button>
         <label for="lang">Language</label>
-        <select id="lang" title="Deepgram Nova-3 multilingual">
+        <select id="lang" title="Deepgram Nova-3 multilingual" aria-label="Speech recognition language">
           <option value="multi" selected>Auto (multilingual)</option>
           <option value="en">English</option>
           <option value="es">Spanish</option>
@@ -31,7 +37,9 @@
       </div>
     </header>
 
-    <div id="chat" class="chat">
+    <div id="srUpdates" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+    <div id="chat" class="chat" role="log" aria-label="CareLoop conversation">
       <div class="msg bot">
         <div class="bubble">
           Hi, I'm <b>CareLoop</b>. Tell me what's going on, who it is for, and where to search.
@@ -46,8 +54,8 @@
       </div>
     </div>
 
-    <div class="composer">
-      <button id="mic" class="mic" title="Click to talk">
+    <div class="composer" role="form" aria-label="Send CareLoop a message">
+      <button id="mic" class="mic" type="button" title="Click to talk" aria-label="Start voice recording">
         <span class="mic-icon" aria-hidden="true"></span>
         <span class="voice-meter" aria-hidden="true">
           <span></span>
@@ -59,12 +67,12 @@
         <span class="mic-label">Speak</span>
       </button>
       <div class="text-row">
-        <input id="textInput" type="text" placeholder="Type a message" />
-        <button id="sendBtn">Send</button>
+        <input id="textInput" type="text" placeholder="Type a message" aria-label="Type a message" />
+        <button id="sendBtn" type="button" aria-label="Send message">Send</button>
       </div>
     </div>
 
-    <div id="status" class="status"></div>
+    <div id="status" class="status" role="status" aria-live="polite"></div>
     <div id="stats" class="stats-line"></div>
     <footer>
       <span id="via" class="via"></span>

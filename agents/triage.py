@@ -15,7 +15,7 @@ agent = Agent(
     mailbox=True,
     publish_agent_details=True,
     readme_path=config.readme("triage"),
-    description="CareLoop Triage — urgency + specialty routing with hard 911 red-flag rules.",
+    description="CareLoop Triage — urgency + specialty routing (Claude-powered clinical reasoning) with hard 911 red-flag rules.",
 )
 
 

@@ -12,3 +12,4 @@ python-dotenv>=1.0.0
 websockets>=12.0
 stripe>=9.0.0           # refundable booking-deposit flow (test mode)
 redis>=5.0.0           # shared cache + session store + audit stream + live stats
+anthropic>=0.40.0      # optional: Claude powers triage clinical reasoning

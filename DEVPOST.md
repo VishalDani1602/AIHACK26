@@ -37,8 +37,10 @@ You describe a health concern in plain language (by **voice** or text). CareLoop
   usable from ASI:One, so the **entire workflow runs in ASI:One chat with no
   custom frontend**. Agents coordinate through real agent-to-agent messaging
   (`send_and_receive`).
-- **ASI:One LLM** (`asi1-mini`) parses intent, drives the multi-turn conversation,
-  and runs triage reasoning.
+- **ASI:One LLM** (`asi1-mini`) parses intent and drives the multi-turn conversation.
+- **Anthropic Claude** (`claude-sonnet-4-6`) powers the triage agent's clinical
+  reasoning (urgency + specialty), with graceful fallback to ASI:One — so the build
+  is on Claude Code *and* uses the Claude API in the product.
 - **Deepgram**: Nova-3 multilingual STT + Aura-2 TTS power a click-to-talk web app
   layered on top of the same Orchestrator — voice is the primary, essential interface.
 - **CMS NPPES NPI Registry** for real, verifiable provider data.

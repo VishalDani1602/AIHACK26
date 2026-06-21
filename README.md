@@ -132,7 +132,8 @@ I'm having crushing chest pain and I can't breathe
 ## Tech
 - **Fetch.ai uAgents** — multi-agent framework, Agentverse mailboxes, Almanac discovery
 - **Agent Chat Protocol** — ASI:One discoverability & chat
-- **ASI:One** (`asi1-mini`) — intent parsing, triage, reply composition
+- **ASI:One** (`asi1-mini`) — orchestrator intent parsing + reply composition
+- **Anthropic Claude** (`claude-sonnet-4-6`) — triage clinical reasoning (falls back to ASI:One)
 - **Deepgram** — Nova-3 STT (multilingual) + Aura-2 TTS
 - **Stripe** — real (test-mode) Checkout for a refundable booking deposit, verified server-side
 - **Redis** (beyond caching) — shared provider/triage/trials cache (91×–853× faster on repeats),

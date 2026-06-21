@@ -16,7 +16,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-from . import asi, store
+from . import asi, claude_llm, store
 from .models import Provider, TriageResult
 from .prompts import ALLOWED_SPECIALTIES, TRIAGE_SYSTEM
 
@@ -104,10 +104,15 @@ def triage(session_id: str, symptoms: str, patient_age=None) -> TriageResult:
         condition = cached.get("condition", "")
         chronic = cached.get("chronic", False)
     else:
-        data = asi.chat_json(
-            TRIAGE_SYSTEM,
-            f"Patient age: {patient_age or 'unknown'}\nConcern: {symptoms}",
-        )
+        user_msg = f"Patient age: {patient_age or 'unknown'}\nConcern: {symptoms}"
+        # Prefer Claude for clinical-reasoning quality; fall back to ASI:One, then heuristic.
+        data = claude_llm.chat_json(TRIAGE_SYSTEM, user_msg) if claude_llm.have_claude() else None
+        engine = "claude" if data else ""
+        if data is None:
+            data = asi.chat_json(TRIAGE_SYSTEM, user_msg)
+            engine = "asi1" if data else "heuristic"
+        if engine:
+            store.incr_stat(f"triage_engine_{engine}")
         if data and data.get("recommended_specialty"):
             specialty = data.get("recommended_specialty", "Primary Care")
             if specialty not in ALLOWED_SPECIALTIES:

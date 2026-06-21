@@ -183,7 +183,8 @@ async def voice_endpoint(ctx: Context, req: VoiceRequest) -> VoiceResponse:
     save_state(ctx, key, state)
     return VoiceResponse(
         session_id=req.session_id, reply=out["reply"],
-        stage=out["stage"], emergency=out["emergency"])
+        stage=out["stage"], emergency=out["emergency"],
+        card=out.get("card"), actions=out.get("actions"))
 
 
 @agent.on_event("startup")

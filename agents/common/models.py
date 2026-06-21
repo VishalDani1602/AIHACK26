@@ -152,5 +152,7 @@ class VoiceRequest(Model):
 class VoiceResponse(Model):
     session_id: str
     reply: str
-    stage: str = ""             # collecting | confirming | done | emergency
+    stage: str = ""             # collecting | confirming | awaiting_payment | done | emergency
     emergency: bool = False
+    card: Optional[dict] = None       # structured content for the UI (provider/trials/payment/booking/emergency)
+    actions: Optional[List[dict]] = None  # quick-reply buttons: [{label, send, primary?}]

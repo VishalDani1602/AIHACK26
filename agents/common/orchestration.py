@@ -226,7 +226,8 @@ async def handle_turn(state: Dict, user_text: str, specialists: Specialists) -> 
             state["skip_payment"] = True
             return _out(state, "No problem — I won't charge a deposit. Say \"yes\" and I'll book it now.", "confirming")
         url = state["payment"]["checkout_url"]
-        return _out(state, f"I don't see the payment yet. You can pay the deposit here:\n\n{url}\n\nThen just say \"done\".", "awaiting_payment")
+        return _out(state, f"I don't see the payment yet. You can pay the deposit here:\n\n{url}\n\nThen just say \"done\".",
+                    "awaiting_payment", card=_payment_card(state), actions=PAYMENT_ACTIONS)
 
     # ---- Confirming an appointment ----
     if state.get("stage") == "confirming" and state.get("pending"):
@@ -255,7 +256,10 @@ async def handle_turn(state: Dict, user_text: str, specialists: Specialists) -> 
         store.audit("emergency", {"session": session_id, "red_flags": tri.red_flags})
         store.incr_stat("emergencies")
         flags = f" ({', '.join(tri.red_flags)})" if tri.red_flags else ""
-        return _out(state, f"{EMERGENCY_BANNER}{flags}\n\n{tri.advice}", "emergency", emergency=True)
+        emergency_card = {"type": "emergency", "emergency": {
+            "detail": tri.advice, "red_flags": list(tri.red_flags or [])}}
+        return _out(state, f"{EMERGENCY_BANNER}{flags}\n\n{tri.advice}", "emergency",
+                    emergency=True, card=emergency_card)
 
     store.audit("triage", {"session": session_id, "urgency": tri.urgency,
                            "specialty": tri.recommended_specialty})
@@ -304,6 +308,7 @@ async def handle_turn(state: Dict, user_text: str, specialists: Specialists) -> 
     # For a serious/chronic condition (or if meds were mentioned), consult the
     # clinical-evidence agent for recruiting trials + drug-safety notes.
     evidence_text = ""
+    state["evidence"] = {}
     if state.get("chronic") or state.get("medications"):
         ev = await specialists.get_evidence(EvidenceRequest(
             session_id=session_id, condition=state.get("condition", ""),
@@ -311,6 +316,11 @@ async def handle_turn(state: Dict, user_text: str, specialists: Specialists) -> 
             city=state.get("city", ""), state=state.get("state", ""), limit=3))
         evidence_text = _evidence_section(ev)
         if ev and (ev.trials or ev.drug_notes):
+            state["evidence"] = {
+                "trials": [{"nct_id": t.nct_id, "title": t.title, "phase": t.phase,
+                            "location": t.location, "url": t.url} for t in ev.trials[:3]],
+                "drug_notes": [{"drug": d.drug, "info": d.info, "url": d.url} for d in ev.drug_notes[:2]],
+            }
             store.audit("evidence", {"session": session_id, "condition": state.get("condition", ""),
                                      "trials": len(ev.trials), "drugs": len(ev.drug_notes)})
             store.incr_stat("evidence_lookups")
@@ -321,7 +331,7 @@ async def handle_turn(state: Dict, user_text: str, specialists: Specialists) -> 
         f"{tri.advice} I'd start with **{tri.recommended_specialty}** — and good news, this isn't an emergency.",
         evidence_text,
     )
-    return _out(state, reply, "confirming")
+    return _out(state, reply, "confirming", card=_provider_card(state), actions=PROVIDER_ACTIONS)
 
 
 def _handle_provider_choice(state: Dict, user_text: str) -> Optional[Dict]:
@@ -334,7 +344,7 @@ def _handle_provider_choice(state: Dict, user_text: str) -> Optional[Dict]:
         return _out(
             state,
             _provider_reply(state, "Here’s another provider option near your location."),
-            "confirming",
+            "confirming", card=_provider_card(state), actions=PROVIDER_ACTIONS,
         )
 
     if _DIFFERENT_TIME.search(text):
@@ -348,7 +358,7 @@ def _handle_provider_choice(state: Dict, user_text: str) -> Optional[Dict]:
         return _out(
             state,
             _provider_reply(state, "Here’s a different time with the same provider."),
-            "confirming",
+            "confirming", card=_provider_card(state), actions=PROVIDER_ACTIONS,
         )
     return None
 
@@ -410,7 +420,7 @@ async def _proceed_after_confirm(state: Dict, specialists: Specialists) -> Dict:
         f"You can use the test card 4242 4242 4242 4242, any future date and CVC. "
         f"Once it's paid, say \"done\" and I'll confirm the booking."
     )
-    return _out(state, reply, "awaiting_payment")
+    return _out(state, reply, "awaiting_payment", card=_payment_card(state), actions=PAYMENT_ACTIONS)
 
 
 async def _verify_and_book(state: Dict, specialists: Specialists) -> Dict:
@@ -429,7 +439,7 @@ async def _verify_and_book(state: Dict, specialists: Specialists) -> Dict:
     return _out(state,
                 f"I don't see the deposit completed yet (status: {status}). "
                 f"Once the payment goes through, say \"done\". Link: {pay['checkout_url']}",
-                "awaiting_payment")
+                "awaiting_payment", card=_payment_card(state), actions=PAYMENT_ACTIONS)
 
 
 async def _do_booking(state: Dict, specialists: Specialists) -> Dict:
@@ -457,7 +467,7 @@ async def _do_booking(state: Dict, specialists: Specialists) -> Dict:
         f"I've prepared a calendar invite and a summary you can share. "
         f"Reminder: {DISCLAIMER} Is there anything else I can help with?"
     )
-    return _out(state, reply, "done")
+    return _out(state, reply, "done", card=_booking_card(state, br), actions=DONE_ACTIONS)
 
 
 def _evidence_section(ev) -> str:
@@ -474,9 +484,74 @@ def _evidence_section(ev) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _out(state: Dict, reply: str, stage: str, emergency: bool = False) -> Dict:
+def _out(state: Dict, reply: str, stage: str, emergency: bool = False,
+         card: Optional[Dict] = None, actions: Optional[list] = None) -> Dict:
     state["stage"] = stage
-    return {"reply": reply, "stage": stage, "emergency": emergency}
+    return {"reply": reply, "stage": stage, "emergency": emergency,
+            "card": card, "actions": actions}
+
+
+# --------------------------------------------------------------------------- #
+# Structured cards + quick-reply actions for the web UI (text reply is the
+# fallback / ASI:One path; these let the frontend render rich, tappable cards).
+# --------------------------------------------------------------------------- #
+PROVIDER_ACTIONS = [
+    {"label": "Book this", "send": "yes", "primary": True},
+    {"label": "Different time", "send": "a different time"},
+    {"label": "Another provider", "send": "another provider"},
+]
+PAYMENT_ACTIONS = [
+    {"label": "I've paid", "send": "done", "primary": True},
+    {"label": "Skip deposit", "send": "no"},
+]
+DONE_ACTIONS = [{"label": "New request", "send": "start over", "primary": True}]
+
+
+def _provider_card(state: Dict) -> Dict:
+    pending = state.get("pending") or {}
+    prov = pending.get("provider", {})
+    card = {
+        "type": "provider",
+        "provider": {
+            "name": prov.get("name", ""),
+            "specialty": prov.get("specialty", state.get("specialty", "")),
+            "address": prov.get("address", ""),
+            "phone": prov.get("phone", ""),
+            "next_slot": prov.get("next_slot", ""),
+            "accepts_insurance": prov.get("accepts_insurance", True),
+        },
+        "cost": {
+            "low": pending.get("cost_low", 0),
+            "high": pending.get("cost_high", 0),
+            "explanation": pending.get("cost_why", ""),
+        },
+        # Only assert plan acceptance once the user has actually given a plan.
+        "insurance_known": bool(state.get("insurance")),
+    }
+    ev = state.get("evidence") or {}
+    if ev.get("trials"):
+        card["trials"] = ev["trials"]
+    if ev.get("drug_notes"):
+        card["drug_notes"] = ev["drug_notes"]
+    return card
+
+
+def _payment_card(state: Dict) -> Dict:
+    pay = state.get("payment") or {}
+    return {"type": "payment", "payment": {
+        "checkout_url": pay.get("checkout_url", ""),
+        "amount_usd": pay.get("amount", 0)}}
+
+
+def _booking_card(state: Dict, br) -> Dict:
+    prov = (state.get("pending") or {}).get("provider", {})
+    return {"type": "booking", "booking": {
+        "confirmation_code": br.confirmation_code,
+        "provider": prov.get("name", ""),
+        "address": prov.get("address", ""),
+        "slot": prov.get("next_slot", ""),
+        "deposit_paid": state.get("deposit_paid", 0),
+        "ics": br.ics}}
 
 
 # --------------------------------------------------------------------------- #

@@ -105,11 +105,30 @@ so the existing conversation logic is reused.
 
 ---
 
-## 6. Backend API contract for the interactive cards (I will implement on request)
+## 6. Backend API contract for the interactive cards — ✅ IMPLEMENTED
 
-I'll extend the orchestrator's `/voice` response (`VoiceResponse`) with optional,
-additive fields — the existing `reply` text stays for the ASI:One path and as a
-fallback. Proposed shape:
+**Status: live.** `/api/text` and `/api/converse` (and the orchestrator `/voice`)
+now return additive `card` + `actions` fields alongside `reply`. The text `reply`
+still works for the ASI:One path and as a fallback. Frontend can stop regex-parsing
+the prose and render from `card`/`actions` directly.
+
+**Final shapes shipped** (slightly refined from the original proposal below):
+- `card.type` ∈ `provider | payment | booking | emergency`
+- **provider**: `card.provider{name,specialty,address,phone,next_slot,accepts_insurance}`,
+  `card.cost{low,high,explanation}`, `card.insurance_known` (bool — only show the
+  "Accepts your plan" badge when `true`), and when present `card.trials[]` +
+  `card.drug_notes[{drug,info,url}]`.
+- **payment**: `card.payment{checkout_url, amount_usd}`.
+- **booking**: `card.booking{confirmation_code, provider, address, slot, deposit_paid, ics}`
+  — `ics` is the raw iCalendar text; build an "Add to calendar" download via a Blob
+  (no separate endpoint needed).
+- **emergency**: `card.emergency{detail, red_flags[]}` (render the red banner + a
+  `tel:911` button).
+- `actions`: `[{label, send, primary?}]` — on tap, POST `send` to `/api/text`.
+  Provider → Book this/Different time/Another provider; Payment → I've paid/Skip
+  deposit; Booking → New request.
+
+Original proposal (for reference):
 
 ```jsonc
 {

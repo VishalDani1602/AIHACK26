@@ -59,6 +59,8 @@ class CostRequest(Model):
     session_id: str
     visit_type: str             # "primary_care" | "specialist" | "urgent_care" | "er"
     insurance: str = ""
+    provider_seed: str = ""     # provider NPI/name -> per-provider price variance
+    region: str = ""            # 2-letter state -> regional cost-of-care multiplier
 
 
 class CostResult(Model):

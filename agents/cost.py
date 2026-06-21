@@ -21,7 +21,7 @@ agent = Agent(
 
 @agent.on_message(model=CostRequest, replies=CostResult)
 async def handle_cost(ctx: Context, sender: str, msg: CostRequest):
-    low, high, why = logic.estimate_cost(msg.visit_type, msg.insurance)
+    low, high, why = logic.estimate_cost(msg.visit_type, msg.insurance, msg.provider_seed, msg.region)
     ctx.logger.info(f"cost[{msg.session_id}] {msg.visit_type}/{msg.insurance} -> ${low}-${high}")
     await ctx.send(sender, CostResult(
         session_id=msg.session_id, estimate_low=low, estimate_high=high, explanation=why))

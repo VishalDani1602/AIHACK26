@@ -6,6 +6,7 @@ whole pipeline end-to-end locally (scripts/selftest.py) without Agentverse.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import random
@@ -152,17 +153,45 @@ def visit_type_for_specialty(specialty: str) -> str:
 # Cost estimate
 # --------------------------------------------------------------------------- #
 
-def estimate_cost(visit_type: str, insurance: str = "") -> Tuple[float, float, str]:
-    base = COST_TABLE["visit_base_cost"].get(visit_type, COST_TABLE["visit_base_cost"]["primary_care"])
+# Rough regional cost-of-care multipliers (illustrative, by US state).
+_REGION_COST = {
+    "CA": 1.25, "NY": 1.30, "MA": 1.22, "NJ": 1.18, "CT": 1.18, "WA": 1.15,
+    "DC": 1.25, "HI": 1.20, "CO": 1.08, "IL": 1.05, "PA": 1.02, "AZ": 1.00,
+    "FL": 1.00, "GA": 0.97, "NC": 0.96, "TX": 0.96, "MI": 0.93, "OH": 0.92,
+}
+
+
+def _region_multiplier(region: str) -> float:
+    return _REGION_COST.get((region or "").strip().upper(), 1.0)
+
+
+def _provider_multiplier(seed: str) -> float:
+    """Deterministic per-provider price variance (~0.85x–1.25x of the area baseline)."""
+    if not seed:
+        return 1.0
+    h = int(hashlib.sha256(seed.encode()).hexdigest(), 16) % 1000
+    return 0.85 + (h / 1000.0) * 0.40
+
+
+def _round5(x: float) -> int:
+    return int(round(x / 5.0) * 5)
+
+
+def estimate_cost(visit_type: str, insurance: str = "",
+                  provider_seed: str = "", region: str = "") -> Tuple[float, float, str]:
+    base0 = COST_TABLE["visit_base_cost"].get(visit_type, COST_TABLE["visit_base_cost"]["primary_care"])
+    # Billed amount varies by region (cost of care) and by the specific provider.
+    base = base0 * _region_multiplier(region) * _provider_multiplier(provider_seed)
+    visit = visit_type.replace("_", " ")
     plan_key = (insurance or "").lower().strip()
     plan = COST_TABLE["plans"].get(plan_key)
 
     if not plan:
-        # Unknown plan: give the cash-pay billed range as a rough guide.
-        low, high = round(base * 0.6), round(base * 1.2)
+        # Unknown/no plan: self-pay billed range for THIS provider/area.
+        low, high = _round5(base * 0.7), _round5(base * 1.15)
         return float(low), float(high), (
-            f"Without your plan details, a {visit_type.replace('_', ' ')} visit typically bills "
-            f"around ${low}-${high}. Share your insurance for a tighter estimate."
+            f"Estimated self-pay cost for a {visit} visit at this provider is about "
+            f"${low}–${high}. Share your insurance for a tighter, plan-based estimate."
         )
 
     copay = plan["copay"]
@@ -177,11 +206,11 @@ def estimate_cost(visit_type: str, insurance: str = "") -> Tuple[float, float, s
         toward_ded = min(base, ded)
         after_ded = max(base - ded, 0)
         oop = toward_ded + after_ded * coins + (copay if ded <= 0 else 0)
-        low = round(max(oop * 0.8, copay))
-        high = round(oop * 1.15)
+        low = _round5(max(oop * 0.85, copay))
+        high = _round5(oop * 1.15)
         why = (
             f"With {plan['label']} (≈${ded:.0f} deductible left, {coins*100:.0f}% coinsurance), "
-            f"a {visit_type.replace('_', ' ')} visit (≈${base} billed) would land around ${low}-${high}."
+            f"this {visit} visit (≈${_round5(base)} billed) would land around ${low}–${high}."
         )
     return float(low), float(high), why
 

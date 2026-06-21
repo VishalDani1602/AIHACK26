@@ -291,7 +291,8 @@ async def handle_turn(state: Dict, user_text: str, specialists: Specialists) -> 
     top = providers[0]
     visit_type = logic.visit_type_for_specialty(tri.recommended_specialty)
     cr = await specialists.estimate_cost(CostRequest(
-        session_id=session_id, visit_type=visit_type, insurance=state.get("insurance", "")))
+        session_id=session_id, visit_type=visit_type, insurance=state.get("insurance", ""),
+        provider_seed=top.npi or top.name, region=state.get("state", "")))
     cost_low = cr.estimate_low if cr else 0.0
     cost_high = cr.estimate_high if cr else 0.0
     cost_why = cr.explanation if cr else ""
@@ -334,6 +335,17 @@ async def handle_turn(state: Dict, user_text: str, specialists: Specialists) -> 
     return _out(state, reply, "confirming", card=_provider_card(state), actions=PROVIDER_ACTIONS)
 
 
+def _recompute_pending_cost(state: Dict) -> None:
+    """Recompute the cost estimate for the currently-selected provider (varies per provider)."""
+    pending = state.get("pending") or {}
+    prov = pending.get("provider", {})
+    visit_type = pending.get("visit_type") or logic.visit_type_for_specialty(state.get("specialty", ""))
+    low, high, why = logic.estimate_cost(
+        visit_type, state.get("insurance", ""),
+        prov.get("npi") or prov.get("name", ""), state.get("state", ""))
+    pending["cost_low"], pending["cost_high"], pending["cost_why"] = low, high, why
+
+
 def _handle_provider_choice(state: Dict, user_text: str) -> Optional[Dict]:
     text = user_text.strip()
     if _ANOTHER_PROVIDER.search(text):
@@ -341,6 +353,7 @@ def _handle_provider_choice(state: Dict, user_text: str) -> Optional[Dict]:
         idx = (int(state.get("provider_index", 0)) + 1) % len(options)
         state["provider_index"] = idx
         state["pending"]["provider"] = dict(options[idx])
+        _recompute_pending_cost(state)
         return _out(
             state,
             _provider_reply(state, "Here’s another provider option near your location."),
@@ -578,7 +591,7 @@ class LocalSpecialists:
         return ProviderResult(session_id=req.session_id, providers=providers, note=note)
 
     async def estimate_cost(self, req: CostRequest):
-        low, high, why = logic.estimate_cost(req.visit_type, req.insurance)
+        low, high, why = logic.estimate_cost(req.visit_type, req.insurance, req.provider_seed, req.region)
         return CostResult(session_id=req.session_id, estimate_low=low, estimate_high=high, explanation=why)
 
     async def book(self, req: BookingRequest):

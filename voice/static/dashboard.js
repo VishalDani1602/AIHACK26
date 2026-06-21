@@ -130,11 +130,51 @@ function renderAudit(audit) {
   }).join("");
 }
 
+function renderLLMs(llms, stats) {
+  const claudeCount = (stats || {}).triage_engine_claude || 0;
+  const claude = Boolean(llms.triage_via_claude);
+  const pills = [
+    `<span class="llm-pill"><b>Orchestrator</b> <span class="mini">${esc(llms.orchestrator || "ASI:One")}</span></span>`,
+    `<span class="llm-pill ${claude ? "claude" : ""}"><b>Triage</b> <span class="mini">${esc(llms.triage || "ASI:One")}</span>` +
+      (claudeCount ? ` <span class="mini">· ${claudeCount} calls</span>` : "") + `</span>`,
+  ];
+  $("llmbar").innerHTML = pills.join("");
+}
+
+function archNode(n, cls) {
+  const dot = `<span class="dot ${n.online ? "ok" : ""}"></span>`;
+  const uses = n.uses
+    ? `<span class="arch-uses ${/claude/i.test(n.uses) ? "claude" : ""}">${esc(n.uses)}</span>` : "";
+  return `<div class="arch-node ${cls || ""}"><div class="nm">${dot}${esc(n.name)}</div>` +
+         `<div class="does">${esc(n.does || "")}</div>${uses}</div>`;
+}
+
+function renderArchitecture(a) {
+  if (!a || !a.orchestrator) { $("arch").innerHTML = ""; return; }
+  const entries = (a.entrypoints || []).map((e) =>
+    `<div class="arch-node arch-entry"><div class="nm">${esc(e.name)}</div>` +
+    `<div class="does">${esc(e.desc || "")}</div>` +
+    (e.via ? `<span class="arch-uses">${esc(e.via)}</span>` : "") + `</div>`).join("");
+  const specialists = (a.specialists || []).map((s) => archNode(s)).join("");
+  const shared = (a.shared || []).map((s) =>
+    `<span class="pill"><b>${esc(s.name)}</b> — ${esc(s.desc || "")}</span>`).join("");
+  $("arch").innerHTML =
+    `<div class="arch-row">${entries}</div>` +
+    `<div class="arch-arrow">▼</div>` +
+    archNode(a.orchestrator, "arch-orch") +
+    `<div class="arch-arrow">▼&nbsp; orchestrates specialists via Agentverse (send_and_receive) &nbsp;▼</div>` +
+    `<div class="arch-grid">${specialists}</div>` +
+    `<div class="arch-arrow">shared infrastructure</div>` +
+    `<div class="arch-shared">${shared}</div>`;
+}
+
 async function refresh() {
   try {
     const d = await (await fetch("/api/dashboard")).json();
     $("tagline").textContent = d.project.tagline;
     $("repo").href = d.project.repo;
+    renderLLMs(d.llms || {}, d.redis.stats || {});
+    renderArchitecture(d.architecture || {});
     renderKpis(d.redis.stats || {});
     renderAgents(d.agents || []);
     renderStack(d.stack || []);

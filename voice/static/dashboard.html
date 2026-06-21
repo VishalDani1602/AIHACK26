@@ -49,6 +49,32 @@
     .ev .meta { color: var(--muted, #68756e); font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; }
     .links a { color: var(--accent, #1f7a58); }
     .muted { color: var(--muted, #68756e); font-size: 12px; }
+
+    /* LLM indicator pills */
+    .llmbar { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .llm-pill { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; padding: 5px 11px;
+                border: 1px solid var(--line, #d9e0dc); background: var(--paper, #fff); border-radius: 999px; color: var(--ink, #18211c); }
+    .llm-pill .mini { color: var(--muted, #68756e); }
+    .llm-pill.claude { border-color: #cdaaf2; background: #f6efff; color: #5b2a9e; }
+
+    /* Architecture / explanation board */
+    .arch { display: grid; gap: 10px; }
+    .arch-row { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+    .arch-node { background: var(--paper, #fff); border: 1px solid var(--line, #d9e0dc); border-radius: var(--radius, 8px);
+                 padding: 11px 13px; box-shadow: var(--shadow, 0 12px 36px rgba(34,48,39,.07)); min-width: 0; }
+    .arch-entry { flex: 1 1 240px; max-width: 360px; }
+    .arch-orch { width: min(100%, 600px); margin: 0 auto; border-color: var(--accent, #1f7a58); border-width: 1.5px; }
+    .arch-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+    .arch-node .nm { display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--ink, #18211c); }
+    .arch-node .does { font-size: 12.5px; color: var(--muted, #68756e); margin-top: 4px; line-height: 1.4; }
+    .arch-uses { display: inline-block; margin-top: 9px; font-size: 11px; font-weight: 700; padding: 3px 9px;
+                 border-radius: 999px; background: var(--accent-soft, #e4f1eb); color: var(--accent, #1f7a58); }
+    .arch-uses.claude { background: #f6efff; color: #5b2a9e; }
+    .arch-arrow { text-align: center; color: var(--muted, #68756e); font-size: 15px; line-height: 1; }
+    .arch-shared { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+    .arch-shared .pill { font-size: 12px; border: 1px dashed var(--line-strong, #b8c5be); border-radius: 999px;
+                         padding: 6px 12px; color: var(--muted, #68756e); background: var(--paper, #fff); }
+    .arch-shared .pill b { color: var(--ink, #18211c); }
   </style>
 </head>
 <body>
@@ -59,6 +85,7 @@
         <div>
           <h1>CareLoop Dashboard</h1>
           <p class="tag" id="tagline"></p>
+          <div class="llmbar" id="llmbar"></div>
         </div>
       </div>
       <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap">
@@ -69,6 +96,9 @@
 
     <div class="section-title">Live activity</div>
     <div class="grid kpis" id="kpis"></div>
+
+    <div class="section-title">How it works — live agent architecture</div>
+    <div class="arch" id="arch"></div>
 
     <div class="section-title">Agents <span class="muted" id="agentsUp"></span></div>
     <div class="grid agents" id="agents"></div>
@@ -84,6 +114,6 @@
       &nbsp;·&nbsp; auto-refreshing every 3s
     </p>
   </div>
-  <script src="/static/dashboard.js?v=tier3-dashboard"></script>
+  <script src="/static/dashboard.js?v=arch-board"></script>
 </body>
 </html>

@@ -22,7 +22,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
-from agents.common import config, store
+from agents.common import claude_llm, config, store
 from agents.common.orchestration import LocalSpecialists, handle_turn, new_state
 
 load_dotenv()
@@ -189,8 +189,31 @@ _STACK = [
         {"name": "ClinicalTrials.gov", "detail": "recruiting trials"},
         {"name": "openFDA", "detail": "drug-safety labels"}]},
     {"group": "Anthropic", "items": [
+        {"name": "Claude", "detail": "triage clinical reasoning"},
         {"name": "Claude Code", "detail": "built with"}]},
 ]
+
+# Static "explanation board" of how the agents work together (online status added live).
+_ARCH = {
+    "entrypoints": [
+        {"name": "ASI:One chat", "desc": "Agent Chat Protocol — works with no frontend", "via": "ChatMessage"},
+        {"name": "Voice app + Dashboard", "desc": "Deepgram STT/TTS · interactive cards", "via": "POST /voice"},
+    ],
+    "orchestrator": {"key": "orchestrator", "name": "Orchestrator",
+                     "does": "Parses intent, runs the multi-turn conversation, composes replies + cards"},
+    "specialists": [
+        {"key": "triage", "name": "Triage", "does": "How urgent + which specialty; hard 911 red-flag rules"},
+        {"key": "provider", "name": "Provider-Finder", "does": "Finds real providers near you", "uses": "CMS NPPES"},
+        {"key": "cost", "name": "Cost-Estimator", "does": "Plan-, provider- & region-aware out-of-pocket estimate", "uses": "cost model"},
+        {"key": "scheduler", "name": "Scheduler", "does": "Books the appointment + iCalendar invite", "uses": ".ics"},
+        {"key": "payment", "name": "Payment", "does": "Refundable deposit + server-side verify", "uses": "Stripe Checkout"},
+        {"key": "evidence", "name": "Evidence", "does": "Recruiting trials + drug-safety notes", "uses": "ClinicalTrials.gov + openFDA"},
+    ],
+    "shared": [
+        {"name": "Agentverse mailboxes", "desc": "agent-to-agent messaging (send_and_receive)"},
+        {"name": "Redis", "desc": "cache · sessions · audit stream · live stats"},
+    ],
+}
 
 
 @app.get("/dashboard")
@@ -210,11 +233,34 @@ async def dashboard_data():
         s.close()
         agents.append({"name": name, "role": role, "port": port,
                        "address": config.ADDRESSES.get(key, ""), "online": online})
+
+    online_map = {a["name"]: a["online"] for a in agents}
+    triage_uses = (f"Claude · {claude_llm.ANTHROPIC_MODEL}" if claude_llm.have_claude()
+                   else "ASI:One · asi1-mini (fallback)")
+    orch_uses = "ASI:One · asi1-mini"
+    architecture = {
+        "entrypoints": _ARCH["entrypoints"],
+        "orchestrator": {**_ARCH["orchestrator"], "uses": orch_uses,
+                         "online": online_map.get("orchestrator", False)},
+        "specialists": [
+            {**s, "uses": (triage_uses if s["key"] == "triage" else s.get("uses", "")),
+             "online": online_map.get(s["key"], False)}
+            for s in _ARCH["specialists"]
+        ],
+        "shared": _ARCH["shared"],
+    }
+    llms = {
+        "orchestrator": orch_uses,
+        "triage": triage_uses,
+        "triage_via_claude": claude_llm.have_claude(),
+    }
     return {
         "project": {"name": "CareLoop",
                     "tagline": "Voice-first, multi-agent healthcare-access concierge",
                     "repo": "https://github.com/VishalDani1602/AIHACK26"},
         "agents": agents,
+        "architecture": architecture,
+        "llms": llms,
         "stack": _STACK,
         "redis": {"enabled": store.enabled(), "stats": store.get_stats()},
         "audit": store.recent_audit(12),

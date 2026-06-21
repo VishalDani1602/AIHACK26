@@ -14,6 +14,8 @@ agent = Agent(
     port=config.PORTS["cost"],
     mailbox=True,
     publish_agent_details=True,
+    readme_path=config.readme("cost"),
+    description="CareLoop Cost-Estimator — plan-aware out-of-pocket estimate for a visit.",
 )
 
 

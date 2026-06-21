@@ -14,6 +14,8 @@ agent = Agent(
     port=config.PORTS["scheduler"],
     mailbox=True,
     publish_agent_details=True,
+    readme_path=config.readme("scheduler"),
+    description="CareLoop Scheduler — booking confirmation + real iCalendar (.ics) invite.",
 )
 
 

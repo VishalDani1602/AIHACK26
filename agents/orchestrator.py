@@ -40,6 +40,7 @@ agent = Agent(
     port=config.PORTS["orchestrator"],
     mailbox=True,
     publish_agent_details=True,
+    readme_path=config.readme("orchestrator"),
     description=(
         "CareLoop — a voice-first healthcare-access concierge. Describe a health "
         "concern and CareLoop triages urgency, finds real in-network providers "

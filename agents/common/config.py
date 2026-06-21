@@ -7,12 +7,21 @@ addresses without any manual copy/paste.
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
 AGENTVERSE_API_KEY = os.getenv("AGENTVERSE_API_KEY", "").strip()
+
+_README_DIR = Path(__file__).resolve().parents[1] / "readmes"
+
+
+def readme(name: str) -> str | None:
+    """Absolute path to an agent's profile README (published to Agentverse)."""
+    p = _README_DIR / f"{name}.md"
+    return str(p) if p.exists() else None
 
 SEEDS = {
     "orchestrator": os.getenv("ORCHESTRATOR_SEED", "careloop-orchestrator-seed-2026"),

@@ -14,6 +14,8 @@ agent = Agent(
     port=config.PORTS["triage"],
     mailbox=True,
     publish_agent_details=True,
+    readme_path=config.readme("triage"),
+    description="CareLoop Triage — urgency + specialty routing with hard 911 red-flag rules.",
 )
 
 

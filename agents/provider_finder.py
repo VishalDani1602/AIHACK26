@@ -15,6 +15,8 @@ agent = Agent(
     port=config.PORTS["provider"],
     mailbox=True,
     publish_agent_details=True,
+    readme_path=config.readme("provider_finder"),
+    description="CareLoop Provider-Finder — real US providers from the CMS NPPES registry.",
 )
 
 

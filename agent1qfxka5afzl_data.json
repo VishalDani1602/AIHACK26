@@ -1,0 +1,73 @@
+{
+    "voice:meshtest1": {
+        "stage": "confirming",
+        "symptoms": "bad cough and a low fever for five days",
+        "patient_age": null,
+        "patient_name": "",
+        "city": "Berkeley",
+        "state": "CA",
+        "postal_code": "",
+        "insurance": "medicare",
+        "specialty": "Primary Care",
+        "taxonomy": "Family Medicine",
+        "pending": {
+            "provider": {
+                "name": "Bay Area Family Health",
+                "specialty": "Family Medicine",
+                "address": "1200 Center St, Berkeley, CA",
+                "phone": "(510) 555-0142",
+                "accepts_insurance": true,
+                "next_slot": "tomorrow at 9:00 AM",
+                "npi": ""
+            },
+            "cost_low": 144.0,
+            "cost_high": 207.0,
+            "cost_why": "With Medicare (≈$240 deductible left, 20% coinsurance), a primary care visit (≈$180 billed) would land around $144-$207.",
+            "visit_type": "primary_care"
+        },
+        "session_id": "voice:meshtest1"
+    },
+    "voice:final1": {
+        "stage": "done",
+        "symptoms": "bad cough and a low fever for five days",
+        "patient_age": null,
+        "patient_name": "",
+        "city": "Berkeley",
+        "state": "CA",
+        "postal_code": "",
+        "insurance": "medicare",
+        "specialty": "Primary Care",
+        "taxonomy": "Family Medicine",
+        "pending": {
+            "provider": {
+                "name": "Allison Aiken, M.D.",
+                "specialty": "Family Medicine",
+                "address": "2222 BANCROFT WAY, BERKELEY, CA, 94720",
+                "phone": "510-642-6621",
+                "accepts_insurance": true,
+                "next_slot": "in 2 days at 3:45 PM",
+                "npi": "1376736397"
+            },
+            "cost_low": 144.0,
+            "cost_high": 207.0,
+            "cost_why": "With Medicare (≈$240 deductible left, 20% coinsurance), a primary care visit (≈$180 billed) would land around $144-$207.",
+            "visit_type": "primary_care"
+        },
+        "session_id": "voice:final1",
+        "last_booking_ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//CareLoop//EN\r\nBEGIN:VEVENT\r\nUID:CL-90NXG9@careloop\r\nDTSTAMP:20260621T110958Z\r\nDTSTART:20260623T154500Z\r\nDTEND:20260623T161500Z\r\nSUMMARY:Appointment with Allison Aiken, M.D.\r\nLOCATION:2222 BANCROFT WAY, BERKELEY, CA, 94720\r\nDESCRIPTION:CareLoop booking CL-90NXG9. Reason: bad cough and a low fever for five days\r\nEND:VEVENT\r\nEND:VCALENDAR"
+    },
+    "voice:final2": {
+        "stage": "emergency",
+        "symptoms": "crushing chest pain and inability to breathe",
+        "patient_age": null,
+        "patient_name": "",
+        "city": "",
+        "state": "",
+        "postal_code": "",
+        "insurance": "",
+        "specialty": "",
+        "taxonomy": "",
+        "pending": null,
+        "session_id": "voice:final2"
+    }
+}

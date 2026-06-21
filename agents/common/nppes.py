@@ -100,11 +100,12 @@ def search_providers(
         loc = next((a for a in addresses if a.get("address_purpose") == "LOCATION"), None)
         loc = loc or (addresses[0] if addresses else {})
         address = _format_address(loc)
-        phone = loc.get("telephone_number", "")
+        phone = loc.get("telephone_number") or ""
 
         taxonomies = result.get("taxonomies", [])
         primary_tax = next((t for t in taxonomies if t.get("primary")), taxonomies[0] if taxonomies else {})
-        specialty = primary_tax.get("desc", taxonomy)
+        # NPPES sometimes returns {"desc": null}; .get(k, default) keeps None, so use `or`.
+        specialty = primary_tax.get("desc") or taxonomy
 
         providers.append(
             Provider(

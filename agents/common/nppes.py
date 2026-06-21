@@ -10,6 +10,7 @@ in the UI/disclaimer.
 from __future__ import annotations
 
 import hashlib
+import re
 from typing import List
 
 import requests
@@ -51,6 +52,26 @@ def _format_address(addr: dict) -> str:
     return ", ".join(p for p in parts if p)
 
 
+def _norm_place(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", (value or "").lower()).strip()
+
+
+def _matches_requested_location(addr: dict, city: str, state: str, postal_code: str) -> bool:
+    """NPPES can match one address but return another; keep only the shown practice location."""
+    if not (city or state or postal_code):
+        return True
+    if not addr:
+        return False
+
+    if postal_code and not (addr.get("postal_code") or "").startswith(postal_code):
+        return False
+    if state and (addr.get("state") or "").upper() != state.upper():
+        return False
+    if city and _norm_place(addr.get("city", "")) != _norm_place(city):
+        return False
+    return True
+
+
 def search_providers(
     taxonomy: str,
     city: str = "",
@@ -65,7 +86,7 @@ def search_providers(
     Raises requests exceptions on network failure (caller decides on fallback).
     Results are cached in Redis (shared across all agent processes) for `cache_ttl`.
     """
-    cache_key = "nppes:" + store.hash_key(taxonomy.lower(), city.lower(), state.lower(), postal_code, limit)
+    cache_key = "nppes:v2:" + store.hash_key(taxonomy.lower(), city.lower(), state.lower(), postal_code, limit)
     cached = store.cache_get_json(cache_key)
     if cached is not None:
         store.incr_stat("nppes_cache_hit")
@@ -108,6 +129,8 @@ def search_providers(
         addresses = result.get("addresses", [])
         loc = next((a for a in addresses if a.get("address_purpose") == "LOCATION"), None)
         loc = loc or (addresses[0] if addresses else {})
+        if not _matches_requested_location(loc, city, state, postal_code):
+            continue
         address = _format_address(loc)
         phone = loc.get("telephone_number") or ""
 

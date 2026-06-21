@@ -54,6 +54,8 @@ def new_state() -> Dict:
         "specialty": "",
         "taxonomy": "",
         "pending": None,   # {"provider": Provider.dict(), "cost_low":, "cost_high":, "cost_why":}
+        "provider_options": [],
+        "provider_index": 0,
         "payment": None,   # {"stripe_session_id", "checkout_url", "amount"}
         "skip_payment": False,
         "deposit_paid": 0.0,
@@ -77,8 +79,65 @@ _KNOWN_CITIES = {
     "berkeley": "CA", "oakland": "CA", "san francisco": "CA", "sf": "CA",
     "emeryville": "CA", "alameda": "CA", "richmond": "CA", "san jose": "CA",
 }
+_LOCATION_ALIASES = [
+    (re.compile(r"\b(?:sf|s\.f\.|san\s+francisco)\b", re.I), "San Francisco", "CA"),
+    (re.compile(r"\bberkeley\b", re.I), "Berkeley", "CA"),
+    (re.compile(r"\boakland\b", re.I), "Oakland", "CA"),
+    (re.compile(r"\bemeryville\b", re.I), "Emeryville", "CA"),
+    (re.compile(r"\balameda\b", re.I), "Alameda", "CA"),
+    (re.compile(r"\brichmond\b", re.I), "Richmond", "CA"),
+    (re.compile(r"\bsan\s+jose\b", re.I), "San Jose", "CA"),
+]
 _YES = re.compile(r"\b(yes|yeah|yep|sure|book it|sounds good|ok|okay|please do|do it|go ahead|confirm|done|paid|finished|complete[d]?)\b", re.I)
 _NO = re.compile(r"\b(no|nope|nah|different|someone else|another|other doctor|not that|skip)\b", re.I)
+_DIFFERENT_TIME = re.compile(r"\b((different|another|new|other)\s+(time|slot|appointment)|(time|slot))\b", re.I)
+_ANOTHER_PROVIDER = re.compile(r"\b((another|different|other)\s+(provider|doctor|clinician)|(provider|doctor|clinician))\b", re.I)
+_SLOT_OPTIONS = [
+    "tomorrow at 9:00 AM",
+    "tomorrow at 11:30 AM",
+    "tomorrow at 2:15 PM",
+    "in 2 days at 10:00 AM",
+    "in 2 days at 3:45 PM",
+    "in 3 days at 8:30 AM",
+]
+
+
+def _canonical_city(city: str) -> tuple[str, str] | None:
+    key = re.sub(r"[\s.]+", " ", (city or "").strip().lower()).strip()
+    key = {"s f": "sf", "s. f": "sf"}.get(key, key)
+    if key in ("sf", "san francisco"):
+        return "San Francisco", "CA"
+    if key in _KNOWN_CITIES:
+        return ("San Francisco" if key == "sf" else key.title()), _KNOWN_CITIES[key]
+    return None
+
+
+def _apply_deterministic_slots(state: Dict, text: str) -> None:
+    t = text.lower()
+
+    for key, kws in _INS_KEYWORDS:
+        if any(k in t for k in kws):
+            state["insurance"] = key
+            break
+
+    m = re.search(r"\b(\d{5})\b", t)
+    if m:
+        state["postal_code"] = m.group(1)
+
+    for pattern, city, st in _LOCATION_ALIASES:
+        if pattern.search(text):
+            state["city"] = city
+            state["state"] = st
+            break
+
+    known = _canonical_city(state.get("city", ""))
+    if known:
+        state["city"], state["state"] = known
+
+    if state.get("patient_age") is None:
+        m = re.search(r"\b(\d{1,3})\s*(?:years?\s*old|yo|y/o)\b", t)
+        if m:
+            state["patient_age"] = int(m.group(1))
 
 
 def _naive_extract(state: Dict, text: str) -> str:
@@ -92,29 +151,8 @@ def _naive_extract(state: Dict, text: str) -> str:
     if re.search(r"\b(start over|restart|new problem|different problem)\b", t):
         intent = "restart"
 
-    # insurance
-    if not state.get("insurance"):
-        for key, kws in _INS_KEYWORDS:
-            if any(k in t for k in kws):
-                state["insurance"] = key
-                break
-    # zip
-    if not state.get("postal_code"):
-        m = re.search(r"\b(\d{5})\b", t)
-        if m:
-            state["postal_code"] = m.group(1)
-    # city/state
-    if not state.get("city"):
-        for city, st in _KNOWN_CITIES.items():
-            if city in t:
-                state["city"] = "San Francisco" if city == "sf" else city.title()
-                state["state"] = st
-                break
-    # age
-    if state.get("patient_age") is None:
-        m = re.search(r"\b(\d{1,3})\s*(?:years?\s*old|yo|y/o)\b", t)
-        if m:
-            state["patient_age"] = int(m.group(1))
+    _apply_deterministic_slots(state, text)
+
     # symptoms: accumulate when giving info (not a pure yes/no)
     if intent == "provide_info" and not (_YES.search(t) or _NO.search(t)) and len(text.strip()) > 2:
         existing = state.get("symptoms", "")
@@ -123,6 +161,7 @@ def _naive_extract(state: Dict, text: str) -> str:
 
 
 def _llm_extract(state: Dict, text: str) -> str:
+    _apply_deterministic_slots(state, text)
     known = {k: state.get(k) for k in
              ["symptoms", "patient_age", "patient_name", "city", "state", "postal_code", "insurance"]}
     data = asi.chat_json(
@@ -135,6 +174,7 @@ def _llm_extract(state: Dict, text: str) -> str:
         val = (data.get(key) or "").strip() if isinstance(data.get(key), str) else data.get(key)
         if val:
             state[key] = val
+    _apply_deterministic_slots(state, text)
     if isinstance(data.get("patient_age"), int):
         state["patient_age"] = data["patient_age"]
     intent = data.get("intent", "provide_info")
@@ -155,6 +195,12 @@ async def handle_turn(state: Dict, user_text: str, specialists: Specialists) -> 
         state.clear()
         state.update(new_state())
         state["session_id"] = session_id
+
+    _apply_deterministic_slots(state, user_text)
+    if state.get("stage") == "confirming" and state.get("pending"):
+        choice = _handle_provider_choice(state, user_text)
+        if choice:
+            return choice
 
     intent = _llm_extract(state, user_text) if asi.have_llm() else _naive_extract(state, user_text)
 
@@ -251,6 +297,8 @@ async def handle_turn(state: Dict, user_text: str, specialists: Specialists) -> 
         "cost_low": cost_low, "cost_high": cost_high, "cost_why": cost_why,
         "visit_type": visit_type,
     }
+    state["provider_options"] = [p.dict() for p in providers]
+    state["provider_index"] = 0
     state["stage"] = "confirming"
 
     # For a serious/chronic condition (or if meds were mentioned), consult the
@@ -267,19 +315,68 @@ async def handle_turn(state: Dict, user_text: str, specialists: Specialists) -> 
                                      "trials": len(ev.trials), "drugs": len(ev.drug_notes)})
             store.incr_stat("evidence_lookups")
 
-    ins_note = ""
-    if state.get("insurance"):
-        ins_note = " that accepts your plan" if top.accepts_insurance else " (please confirm they take your plan)"
-    reply = (
-        f"{tri.advice} I'd start with **{tri.recommended_specialty}** — and good news, this isn't an emergency.\n\n"
-        f"The best match near {state.get('city') or state.get('postal_code')}{ins_note} is "
-        f"**{top.name}** ({top.specialty}) at {top.address}, "
-        f"with an opening **{top.next_slot}**.\n\n"
-        f"Estimated cost: **${cost_low:.0f}–${cost_high:.0f}**. {cost_why}\n"
-        f"{evidence_text}\n"
-        f"Want me to book {top.next_slot} for you?"
+    state["triage_advice"] = tri.advice
+    reply = _provider_reply(
+        state,
+        f"{tri.advice} I'd start with **{tri.recommended_specialty}** — and good news, this isn't an emergency.",
+        evidence_text,
     )
     return _out(state, reply, "confirming")
+
+
+def _handle_provider_choice(state: Dict, user_text: str) -> Optional[Dict]:
+    text = user_text.strip()
+    if _ANOTHER_PROVIDER.search(text):
+        options = state.get("provider_options") or [state["pending"]["provider"]]
+        idx = (int(state.get("provider_index", 0)) + 1) % len(options)
+        state["provider_index"] = idx
+        state["pending"]["provider"] = dict(options[idx])
+        return _out(
+            state,
+            _provider_reply(state, "Here’s another provider option near your location."),
+            "confirming",
+        )
+
+    if _DIFFERENT_TIME.search(text):
+        provider = dict(state["pending"]["provider"])
+        provider["next_slot"] = _next_slot(provider.get("next_slot", ""))
+        state["pending"]["provider"] = provider
+        options = state.get("provider_options") or []
+        idx = int(state.get("provider_index", 0))
+        if 0 <= idx < len(options):
+            options[idx] = provider
+        return _out(
+            state,
+            _provider_reply(state, "Here’s a different time with the same provider."),
+            "confirming",
+        )
+    return None
+
+
+def _next_slot(current: str) -> str:
+    if current in _SLOT_OPTIONS:
+        return _SLOT_OPTIONS[(_SLOT_OPTIONS.index(current) + 1) % len(_SLOT_OPTIONS)]
+    return _SLOT_OPTIONS[0]
+
+
+def _provider_reply(state: Dict, intro: str, evidence_text: str = "") -> str:
+    pending = state["pending"]
+    provider = pending["provider"]
+    location = state.get("city") or state.get("postal_code") or "your area"
+    ins_note = ""
+    if state.get("insurance"):
+        ins_note = " that accepts your plan" if provider.get("accepts_insurance", True) else " (please confirm they take your plan)"
+    return (
+        f"{intro}\n\n"
+        f"The best match near {location}{ins_note} is "
+        f"**{provider['name']}** ({provider.get('specialty', state.get('specialty', 'Care provider'))}) "
+        f"at {provider.get('address', 'address on file')}, "
+        f"with an opening **{provider.get('next_slot', 'soon')}**.\n\n"
+        f"Estimated cost: **${pending.get('cost_low', 0):.0f}–${pending.get('cost_high', 0):.0f}**. "
+        f"{pending.get('cost_why', '')}\n"
+        f"{evidence_text}\n"
+        f"Want me to book {provider.get('next_slot', 'that time')} for you?"
+    )
 
 
 async def _proceed_after_confirm(state: Dict, specialists: Specialists) -> Dict:

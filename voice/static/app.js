@@ -263,7 +263,7 @@ function inferActions(data, cards) {
   if (data.stage === "confirming" && cards.some((card) => card.type === "provider")) {
     return [
       { label: "Book this", send: "yes", primary: true },
-      { label: "Different time", send: "a different time" },
+      { label: "Different time", send: "different time" },
       { label: "Another provider", send: "another provider" },
     ];
   }
@@ -486,6 +486,9 @@ micBtn.onclick = () => {
 chat.addEventListener("click", (event) => {
   const action = event.target.closest("[data-send]");
   if (action && !busy) {
+    action.closest(".quick-actions")?.querySelectorAll("button").forEach((button) => {
+      button.disabled = true;
+    });
     textInput.value = action.dataset.send;
     sendText();
     return;

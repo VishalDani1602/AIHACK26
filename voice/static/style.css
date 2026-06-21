@@ -472,6 +472,11 @@ h1 {
   border-color: var(--accent);
 }
 
+.quick-actions button:disabled {
+  opacity: .52;
+  cursor: default;
+}
+
 .prompt-chips {
   display: flex;
   flex-wrap: wrap;

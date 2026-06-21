@@ -5,8 +5,9 @@
 > out-of-pocket cost → books an appointment** — then reads the confirmation
 > back to you by voice.
 
-Built for the **UC Berkeley AI Hackathon 2026** on **Fetch.ai** (uAgents + ASI:One)
-with a **Deepgram** voice layer. Developed with **Claude Code**.
+Built for the **UC Berkeley AI Hackathon 2026**: **Fetch.ai** (uAgents + ASI:One)
+multi-agent orchestration, **Anthropic Claude** clinical triage, a **Deepgram** voice
+layer, **Redis** caching/state, and **Stripe** payments. Developed with **Claude Code**.
 
 ⚠️ **CareLoop is a navigation aid, not a medical provider.** It does not diagnose.
 Red-flag symptoms (chest pain, stroke signs, trouble breathing, etc.) are routed
@@ -61,9 +62,9 @@ conversation you can have **by voice, in your own language**.
 | Agent | Address (derived from seed) | Role |
 |-------|------------------------------|------|
 | Orchestrator | `agent1qfxka5afzlk2wsp3agw77l7gz426d9vymwr9l4cfhy2gdvvhq2h8kn798uc` | ASI:One-facing brain; chat protocol + voice REST |
-| Triage | `agent1q29ewatrgfnskvkk020y3p2n7qkl36xw293v4x74kpy49czdjqxrqxl9xpe` | Urgency + specialty, hard 911 red-flag rules |
-| Provider-Finder | `agent1qdjaj2ctxsjs3vpt5j7uxk46vq9znrquhn9q8fkljqhjueqrr93nzwj3whq` | Real providers from CMS NPPES |
-| Cost-Estimator | `agent1qtrge69qnynvpfwd7duw9pgjeffsmmlemflyz06v6v4r2yndtvcwq5k4sd6` | Plan-aware out-of-pocket estimate |
+| Triage | `agent1q29ewatrgfnskvkk020y3p2n7qkl36xw293v4x74kpy49czdjqxrqxl9xpe` | **Claude-powered** urgency + specialty reasoning; hard 911 red-flag rules |
+| Provider-Finder | `agent1qdjaj2ctxsjs3vpt5j7uxk46vq9znrquhn9q8fkljqhjueqrr93nzwj3whq` | Real providers from CMS NPPES (filtered to the requested city/state) |
+| Cost-Estimator | `agent1qtrge69qnynvpfwd7duw9pgjeffsmmlemflyz06v6v4r2yndtvcwq5k4sd6` | Plan-, provider- & region-aware out-of-pocket estimate |
 | Scheduler | `agent1q0d726utvqsgjmctt4etsclcapk9tvx75t7tlrcp0luyvsecyr7yz9ujgyf` | Confirmation + iCalendar invite |
 | Payment | `agent1qdr7s04hzndeefr2tt085nt29q8jxklf8hne9yhchn63huey9eurczs5ux5` | Stripe Checkout deposit + server-side verify |
 | Evidence | `agent1qt2nusghdan489nh92w37ax33gz8yxfuklezkph029eyju5dyt7vv7m2eag` | Recruiting clinical trials (ClinicalTrials.gov) + drug safety (openFDA) |
@@ -108,8 +109,9 @@ my dad has had a bad cough and a low fever for five days,
 he's on Medicare and we're in Berkeley
 ```
 → "…I'd start with Primary Care … the best match near Berkeley is **Allison Aiken, M.D.**
-at 2222 Bancroft Way with an opening in 2 days … estimated **$144–$207** with Medicare …
-want me to book it?" → *"yes"* → **pay a refundable $25 deposit** via a real Stripe
+at 2222 Bancroft Way with an opening in 2 days … with a **provider- and plan-specific
+out-of-pocket estimate** … want me to book it?" → *"yes"* → **pay a refundable $25
+deposit** via a real Stripe
 Checkout link (test card `4242 4242 4242 4242`) → *"done"* → agent verifies payment →
 ✅ booked + calendar invite.
 

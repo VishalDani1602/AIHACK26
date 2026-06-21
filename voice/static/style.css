@@ -249,6 +249,30 @@ h1 {
   font-size: 12px;
 }
 
+.prompt-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 640px;
+}
+
+.prompt-chips button {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.prompt-chips button:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
 .composer {
   margin-top: 14px;
   display: flex;
@@ -358,6 +382,7 @@ h1 {
 .text-row input:focus,
 .controls select:focus,
 .newchat:focus,
+.prompt-chips button:focus,
 .text-row button:focus,
 .mic:focus {
   outline: 2px solid var(--accent-soft);
@@ -449,6 +474,12 @@ footer {
 
   .bubble {
     max-width: 92%;
+  }
+
+  .prompt-chips {
+    display: grid;
+    grid-template-columns: 1fr;
+    max-width: none;
   }
 
   .text-row {

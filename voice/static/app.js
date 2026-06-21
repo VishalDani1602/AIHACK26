@@ -17,6 +17,13 @@ let recording = false;
 let busy = false;
 let emergencyFocusTimer = null;
 
+const EXAMPLE_PROMPTS = [
+  "My dad has a bad cough and fever",
+  "Find a cardiologist near me",
+  "My mom was diagnosed with diabetes",
+  "I have chest pain",
+];
+
 function addMessage(role, text, opts = {}) {
   const wrap = document.createElement("div");
   wrap.className = "msg " + role + (opts.emergency ? " emergency" : "");
@@ -82,6 +89,24 @@ function renderEmergency(text) {
   `;
 }
 
+function renderPromptChips() {
+  return `
+    <div class="prompt-chips" aria-label="Example prompts">
+      ${EXAMPLE_PROMPTS.map((prompt) => (
+        `<button type="button" data-prompt="${escapeAttr(prompt)}">${render(prompt)}</button>`
+      )).join("")}
+    </div>
+  `;
+}
+
+function clearPromptChips() {
+  chat.querySelectorAll(".prompt-chips").forEach((el) => el.remove());
+}
+
+function escapeAttr(value) {
+  return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+}
+
 function setEmergencyFocus(active) {
   if (emergencyFocusTimer) clearTimeout(emergencyFocusTimer);
   composer.classList.toggle("composer-emergency", active);
@@ -96,6 +121,7 @@ async function sendText() {
   const text = textInput.value.trim();
   if (!text) return;
   textInput.value = "";
+  clearPromptChips();
   setStatus("Thinking");
   await sendTurn(fetch("/api/text", {
     method: "POST",
@@ -154,6 +180,13 @@ micBtn.onclick = () => {
   recording ? stopRecording() : startRecording();
 };
 
+chat.addEventListener("click", (event) => {
+  const chip = event.target.closest("[data-prompt]");
+  if (!chip || busy) return;
+  textInput.value = chip.dataset.prompt;
+  sendText();
+});
+
 // New chat: fresh session id (server keys state by session, so this fully resets) + clear UI.
 const GREETING_HTML =
   "Hi, I'm <b>CareLoop</b>. Tell me what's going on, who it is for, and where to search." +
@@ -168,6 +201,7 @@ function resetChat() {
   wrap.className = "msg bot";
   wrap.innerHTML = '<div class="bubble">' + GREETING_HTML + "</div>";
   chat.appendChild(wrap);
+  chat.insertAdjacentHTML("beforeend", renderPromptChips());
   setStatus("New conversation started");
   viaEl.textContent = "";
   textInput.value = "";

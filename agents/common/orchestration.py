@@ -10,12 +10,16 @@ from __future__ import annotations
 import re
 from typing import Dict, Optional, Protocol
 
-from . import asi, logic
+from . import asi, logic, stripe_pay
 from .models import (
     BookingRequest,
     BookingResult,
     CostRequest,
     CostResult,
+    PaymentLinkRequest,
+    PaymentLinkResult,
+    PaymentVerifyRequest,
+    PaymentVerifyResult,
     Provider,
     ProviderRequest,
     ProviderResult,
@@ -30,6 +34,8 @@ class Specialists(Protocol):
     async def find_providers(self, req: ProviderRequest) -> Optional[ProviderResult]: ...
     async def estimate_cost(self, req: CostRequest) -> Optional[CostResult]: ...
     async def book(self, req: BookingRequest) -> Optional[BookingResult]: ...
+    async def create_payment(self, req: PaymentLinkRequest) -> Optional[PaymentLinkResult]: ...
+    async def verify_payment(self, req: PaymentVerifyRequest) -> Optional[PaymentVerifyResult]: ...
 
 
 def new_state() -> Dict:
@@ -45,6 +51,9 @@ def new_state() -> Dict:
         "specialty": "",
         "taxonomy": "",
         "pending": None,   # {"provider": Provider.dict(), "cost_low":, "cost_high":, "cost_why":}
+        "payment": None,   # {"stripe_session_id", "checkout_url", "amount"}
+        "skip_payment": False,
+        "deposit_paid": 0.0,
     }
 
 
@@ -63,14 +72,14 @@ _KNOWN_CITIES = {
     "berkeley": "CA", "oakland": "CA", "san francisco": "CA", "sf": "CA",
     "emeryville": "CA", "alameda": "CA", "richmond": "CA", "san jose": "CA",
 }
-_YES = re.compile(r"\b(yes|yeah|yep|sure|book it|sounds good|ok|okay|please do|do it|go ahead|confirm)\b", re.I)
-_NO = re.compile(r"\b(no|nope|nah|different|someone else|another|other doctor|not that)\b", re.I)
+_YES = re.compile(r"\b(yes|yeah|yep|sure|book it|sounds good|ok|okay|please do|do it|go ahead|confirm|done|paid|finished|complete[d]?)\b", re.I)
+_NO = re.compile(r"\b(no|nope|nah|different|someone else|another|other doctor|not that|skip)\b", re.I)
 
 
 def _naive_extract(state: Dict, text: str) -> str:
     t = text.lower()
     intent = "provide_info"
-    if state.get("stage") == "confirming":
+    if state.get("stage") in ("confirming", "awaiting_payment"):
         if _YES.search(t):
             intent = "confirm"
         elif _NO.search(t):
@@ -136,6 +145,13 @@ async def handle_turn(state: Dict, user_text: str, specialists: Specialists) -> 
     session_id = state.get("session_id", "session")
     intent = _llm_extract(state, user_text) if asi.have_llm() else _naive_extract(state, user_text)
 
+    # Robust override: in a yes/no stage, an explicit affirmation/decline wins over the LLM's guess.
+    if state.get("stage") in ("confirming", "awaiting_payment"):
+        if _YES.search(user_text):
+            intent = "confirm"
+        elif _NO.search(user_text):
+            intent = "decline"
+
     if intent == "restart":
         sid = session_id
         state.clear()
@@ -143,10 +159,20 @@ async def handle_turn(state: Dict, user_text: str, specialists: Specialists) -> 
         state["session_id"] = sid
         return _out(state, "No problem — let's start fresh. What's going on, and who is it for?", "collecting")
 
+    # ---- Awaiting Stripe deposit payment ----
+    if state.get("stage") == "awaiting_payment" and state.get("payment"):
+        if intent == "confirm":
+            return await _verify_and_book(state, specialists)
+        if intent == "decline":
+            state["skip_payment"] = True
+            return _out(state, "No problem — I won't charge a deposit. Say \"yes\" and I'll book it now.", "confirming")
+        url = state["payment"]["checkout_url"]
+        return _out(state, f"I don't see the payment yet. You can pay the deposit here:\n\n{url}\n\nThen just say \"done\".", "awaiting_payment")
+
     # ---- Confirming an appointment ----
     if state.get("stage") == "confirming" and state.get("pending"):
         if intent == "confirm":
-            return await _do_booking(state, specialists)
+            return await _proceed_after_confirm(state, specialists)
         if intent == "decline":
             return _out(state,
                         "Okay. I can look for a different provider or another time — which would you prefer?",
@@ -222,6 +248,52 @@ async def handle_turn(state: Dict, user_text: str, specialists: Specialists) -> 
     return _out(state, reply, "confirming")
 
 
+async def _proceed_after_confirm(state: Dict, specialists: Specialists) -> Dict:
+    """After the user confirms, take a refundable deposit via Stripe (if enabled), then book."""
+    deposit = stripe_pay.DEPOSIT_USD
+    if state.get("skip_payment") or deposit <= 0:
+        return await _do_booking(state, specialists)
+
+    prov = state["pending"]["provider"]
+    plr = await specialists.create_payment(PaymentLinkRequest(
+        session_id=state.get("session_id", "session"),
+        amount_usd=deposit,
+        description=f"CareLoop booking deposit — {prov['name']}",
+    ))
+    if not plr or not plr.enabled or not plr.checkout_url:
+        # Stripe not configured / failed -> just book.
+        return await _do_booking(state, specialists)
+
+    state["payment"] = {
+        "stripe_session_id": plr.stripe_session_id,
+        "checkout_url": plr.checkout_url,
+        "amount": plr.amount_usd,
+    }
+    reply = (
+        f"Almost done. To hold your appointment, please pay a **refundable ${plr.amount_usd:.0f} deposit** "
+        f"(applied to your visit) on this secure Stripe page:\n\n{plr.checkout_url}\n\n"
+        f"You can use the test card 4242 4242 4242 4242, any future date and CVC. "
+        f"Once it's paid, say \"done\" and I'll confirm the booking."
+    )
+    return _out(state, reply, "awaiting_payment")
+
+
+async def _verify_and_book(state: Dict, specialists: Specialists) -> Dict:
+    pay = state["payment"]
+    vr = await specialists.verify_payment(PaymentVerifyRequest(
+        session_id=state.get("session_id", "session"),
+        stripe_session_id=pay["stripe_session_id"],
+    ))
+    if vr and vr.paid:
+        state["deposit_paid"] = pay.get("amount", 0.0)
+        return await _do_booking(state, specialists)
+    status = vr.status if vr else "unknown"
+    return _out(state,
+                f"I don't see the deposit completed yet (status: {status}). "
+                f"Once the payment goes through, say \"done\". Link: {pay['checkout_url']}",
+                "awaiting_payment")
+
+
 async def _do_booking(state: Dict, specialists: Specialists) -> Dict:
     pending = state["pending"]
     prov = pending["provider"]
@@ -235,8 +307,11 @@ async def _do_booking(state: Dict, specialists: Specialists) -> Dict:
         return _out(state, "I hit a snag booking that. Want me to try again?", "confirming")
     state["stage"] = "done"
     state["last_booking_ics"] = br.ics
+    deposit_note = ""
+    if state.get("deposit_paid"):
+        deposit_note = f" Your ${state['deposit_paid']:.0f} refundable deposit was received (applied to your visit)."
     reply = (
-        f"✅ {br.summary}\n\n"
+        f"✅ {br.summary}{deposit_note}\n\n"
         f"I've prepared a calendar invite and a summary you can share. "
         f"Reminder: {DISCLAIMER} Is there anything else I can help with?"
     )
@@ -280,3 +355,17 @@ class LocalSpecialists:
             req.session_id, req.provider_name, req.provider_address, req.slot,
             req.patient_name, req.reason)
         return BookingResult(session_id=req.session_id, confirmation_code=code, summary=summary, ics=ics)
+
+    async def create_payment(self, req: PaymentLinkRequest):
+        if not stripe_pay.enabled():
+            return PaymentLinkResult(session_id=req.session_id, enabled=False)
+        try:
+            sid, url = stripe_pay.create_checkout(req.amount_usd, req.description)
+            return PaymentLinkResult(session_id=req.session_id, enabled=True,
+                                     checkout_url=url, stripe_session_id=sid, amount_usd=req.amount_usd)
+        except Exception:
+            return PaymentLinkResult(session_id=req.session_id, enabled=False)
+
+    async def verify_payment(self, req: PaymentVerifyRequest):
+        paid, status = stripe_pay.verify(req.stripe_session_id)
+        return PaymentVerifyResult(session_id=req.session_id, paid=paid, status=status)

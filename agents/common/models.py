@@ -83,6 +83,32 @@ class BookingResult(Model):
     ics: str = ""               # iCalendar text for the appointment
 
 
+# ---- Payment (Stripe copay/deposit) ----
+class PaymentLinkRequest(Model):
+    session_id: str
+    amount_usd: float
+    description: str
+
+
+class PaymentLinkResult(Model):
+    session_id: str
+    enabled: bool                # False if Stripe isn't configured -> skip payment
+    checkout_url: str = ""
+    stripe_session_id: str = ""
+    amount_usd: float = 0.0
+
+
+class PaymentVerifyRequest(Model):
+    session_id: str
+    stripe_session_id: str
+
+
+class PaymentVerifyResult(Model):
+    session_id: str
+    paid: bool
+    status: str = ""
+
+
 # ---- Orchestrator REST (voice app <-> orchestrator) ----
 class VoiceRequest(Model):
     session_id: str

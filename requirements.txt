@@ -10,3 +10,4 @@ uvicorn[standard]>=0.29.0
 requests>=2.31.0        # NPPES provider lookup
 python-dotenv>=1.0.0
 websockets>=12.0
+stripe>=9.0.0           # refundable booking-deposit flow (test mode)

@@ -42,6 +42,7 @@ start triage          agents.triage
 start provider-finder agents.provider_finder
 start cost            agents.cost
 start scheduler       agents.scheduler
+start payment         agents.payment
 sleep 2
 start orchestrator    agents.orchestrator
 

@@ -27,10 +27,13 @@ function addMessage(role, text, opts = {}) {
   return bubble;
 }
 
-// Minimal markdown: **bold** and newlines.
+// Minimal markdown: **bold**, clickable links, and newlines.
 function render(t) {
   const esc = t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  return esc.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\n/g, "<br>");
+  return esc
+    .replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")
+    .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>')
+    .replace(/\n/g, "<br>");
 }
 
 function setStatus(s) { statusEl.textContent = s; }

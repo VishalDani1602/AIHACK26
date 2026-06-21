@@ -28,6 +28,7 @@ AGENTS = [
     ("provider", config.PORTS["provider"]),
     ("cost", config.PORTS["cost"]),
     ("scheduler", config.PORTS["scheduler"]),
+    ("payment", config.PORTS["payment"]),
 ]
 
 

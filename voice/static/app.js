@@ -13,6 +13,7 @@ const composer = document.querySelector(".composer");
 const meterBars = Array.from(document.querySelectorAll(".voice-meter span"));
 const largeTextToggle = document.getElementById("largeTextToggle");
 const contrastToggle = document.getElementById("contrastToggle");
+const reduceMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
 
 let sessionId = "web-" + Math.random().toString(36).slice(2, 10);
 let mediaRecorder = null;
@@ -42,7 +43,7 @@ function addMessage(role, text, opts = {}) {
   bubble.innerHTML = opts.emergency ? renderEmergency(text) : renderMessageBody(text, opts);
   wrap.appendChild(bubble);
   chat.appendChild(wrap);
-  chat.scrollTop = chat.scrollHeight;
+  scrollChatToEnd();
   return bubble;
 }
 
@@ -50,13 +51,14 @@ function addThinkingBubble() {
   const wrap = document.createElement("div");
   wrap.className = "msg bot thinking";
   wrap.innerHTML = `
-    <div class="bubble">
-      <span>CareLoop is thinking</span>
+    <div class="bubble" role="status" aria-live="polite">
+      <span class="thinking-label">CareLoop is thinking</span>
       <span class="typing-dots" aria-hidden="true"><span></span><span></span><span></span></span>
+      <span class="thinking-skeleton" aria-hidden="true"><span></span><span></span></span>
     </div>
   `;
   chat.appendChild(wrap);
-  chat.scrollTop = chat.scrollHeight;
+  scrollChatToEnd();
   return wrap;
 }
 
@@ -77,6 +79,15 @@ function renderMessageBody(text, opts = {}) {
 }
 
 function setStatus(s) { statusEl.textContent = s; }
+
+function scrollChatToEnd() {
+  requestAnimationFrame(() => {
+    chat.scrollTo({
+      top: chat.scrollHeight,
+      behavior: reduceMotionQuery.matches ? "auto" : "smooth",
+    });
+  });
+}
 
 function playAudio(b64) {
   if (!b64) return;
@@ -564,6 +575,7 @@ function resetChat() {
   wrap.innerHTML = '<div class="bubble">' + GREETING_HTML + "</div>";
   chat.appendChild(wrap);
   chat.insertAdjacentHTML("beforeend", renderPromptChips());
+  scrollChatToEnd();
   setStatus("New conversation started");
   viaEl.textContent = "";
   textInput.value = "";

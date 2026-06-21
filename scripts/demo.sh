@@ -9,11 +9,21 @@ cd "$(dirname "$0")/.."
 PY=./venv/bin/python
 
 echo "▶ 1/4  Redis"
-if ! docker ps --format '{{.Names}}' | grep -q '^careloop-redis$'; then
+redis_up() { (exec 3<>/dev/tcp/127.0.0.1/6379) >/dev/null 2>&1; }
+if redis_up; then
+  echo "  redis already up on :6379"
+elif command -v redis-server >/dev/null 2>&1; then
+  redis-server --daemonize yes --save '' --appendonly no >/dev/null 2>&1
+  sleep 1
+  redis_up && echo "  started local redis-server" || echo "  redis-server failed"
+elif docker info >/dev/null 2>&1; then
   docker start careloop-redis >/dev/null 2>&1 || \
     docker run -d --name careloop-redis -p 6379:6379 redis:7-alpine >/dev/null
+  sleep 2
+  redis_up && echo "  started redis (docker)" || echo "  redis NOT up"
+else
+  echo "  redis unavailable — CareLoop runs without it (graceful)"
 fi
-docker exec careloop-redis redis-cli ping >/dev/null 2>&1 && echo "  redis up" || echo "  redis NOT up"
 
 echo "▶ 2/4  Agent mesh"
 if ! lsof -nP -iTCP:8000 -sTCP:LISTEN >/dev/null 2>&1; then

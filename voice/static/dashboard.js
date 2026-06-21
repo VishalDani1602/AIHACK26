@@ -2,6 +2,9 @@
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const displayPrefs = readDisplayPrefs();
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+const kpiValues = new Map();
+const cacheHistory = [];
 
 function readDisplayPrefs() {
   try {
@@ -20,21 +23,80 @@ function pct(hits, calls) {
   return tot ? Math.round((hits / tot) * 100) + "%" : "—";
 }
 
+function pctNumber(hits, calls) {
+  const tot = hits + calls;
+  return tot ? Math.round((hits / tot) * 100) : 0;
+}
+
+function renderSparkline(points) {
+  const safePoints = points.length > 1 ? points : [0, points[0] || 0];
+  const width = 120;
+  const height = 26;
+  const max = Math.max(100, ...safePoints);
+  const step = width / Math.max(1, safePoints.length - 1);
+  const coords = safePoints.map((value, index) => {
+    const x = Math.round(index * step);
+    const y = Math.round(height - (Math.min(value, max) / max) * height);
+    return `${x},${y}`;
+  });
+  return `
+    <svg class="sparkline" viewBox="0 0 ${width} ${height}" aria-hidden="true">
+      <path d="M0,${height} L${coords.join(" L")} L${width},${height} Z"></path>
+      <polyline points="${coords.join(" ")}"></polyline>
+    </svg>
+  `;
+}
+
+function animateKpis(cards) {
+  cards.forEach((card) => {
+    const el = document.querySelector(`[data-kpi-id="${card.id}"]`);
+    if (!el) return;
+    const from = kpiValues.has(card.id) ? kpiValues.get(card.id) : 0;
+    const to = Number(card.value) || 0;
+    const suffix = card.suffix || "";
+    const prefix = card.prefix || "";
+    const duration = reduceMotion.matches ? 0 : 700;
+    const started = Date.now();
+    const format = (value) => `${prefix}${Math.round(value)}${suffix}`;
+
+    function tick() {
+      const elapsed = Date.now() - started;
+      const progress = duration ? Math.min(1, elapsed / duration) : 1;
+      const eased = 1 - Math.pow(1 - progress, 3);
+      el.textContent = format(from + (to - from) * eased);
+      if (progress < 1) requestAnimationFrame(tick);
+    }
+
+    tick();
+    kpiValues.set(card.id, to);
+  });
+}
+
 function renderKpis(st) {
   const cacheHits = (st.nppes_cache_hit || 0) + (st.triage_cache_hit || 0) +
                     (st.ctgov_cache_hit || 0) + (st.openfda_cache_hit || 0);
   const cacheCalls = (st.nppes_api_call || 0) + (st.triage_llm_call || 0) +
                      (st.ctgov_api_call || 0) + (st.openfda_api_call || 0);
+  const cacheRate = pctNumber(cacheHits, cacheCalls);
+  cacheHistory.push(cacheRate);
+  if (cacheHistory.length > 18) cacheHistory.shift();
   const cards = [
-    { v: st.bookings || 0, k: "Appointments booked" },
-    { v: st.emergencies || 0, k: "911 escalations", alert: true },
-    { v: `${st.payments_paid || 0}/${st.payments_requested || 0}`, k: "Deposits paid / requested" },
-    { v: st.evidence_lookups || 0, k: "Clinical-evidence lookups" },
-    { v: pct(cacheHits, cacheCalls), k: "Redis cache hit-rate" },
+    { id: "bookings", value: st.bookings || 0, k: "Appointments booked" },
+    { id: "emergencies", value: st.emergencies || 0, k: "911 escalations", alert: true },
+    { id: "payments", value: st.payments_paid || 0, suffix: `/${st.payments_requested || 0}`, k: "Deposits paid / requested" },
+    { id: "evidence", value: st.evidence_lookups || 0, k: "Clinical-evidence lookups" },
+    { id: "cache", value: cacheRate, suffix: "%", k: "Redis cache hit-rate", sparkline: true },
   ];
   $("kpis").innerHTML = cards.map((c) =>
-    `<div class="card kpi ${c.alert ? "alert" : ""}"><div class="v">${esc(c.v)}</div><div class="k">${esc(c.k)}</div></div>`
+    `<div class="card kpi ${c.alert ? "alert" : ""}">
+      <div>
+        <div class="v" data-kpi-id="${esc(c.id)}">0${esc(c.suffix || "")}</div>
+        <div class="k">${esc(c.k)}</div>
+      </div>
+      ${c.sparkline ? renderSparkline(cacheHistory) : ""}
+    </div>`
   ).join("");
+  animateKpis(cards);
 }
 
 function renderAgents(agents) {

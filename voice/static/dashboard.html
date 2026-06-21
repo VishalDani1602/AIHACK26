@@ -22,9 +22,13 @@
     .kpis { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
     .card { background: var(--paper, #fff); border: 1px solid var(--line, #d9e0dc); border-radius: var(--radius, 8px);
             padding: 14px 16px; box-shadow: var(--shadow, 0 12px 36px rgba(34,48,39,.07)); }
+    .kpi { min-height: 118px; display: flex; flex-direction: column; justify-content: space-between; }
     .kpi .v { font-size: 30px; font-weight: 800; color: var(--ink, #18211c); line-height: 1.1; }
     .kpi .k { font-size: 12px; color: var(--muted, #68756e); margin-top: 6px; }
     .kpi.alert .v { color: var(--emergency, #b42318); }
+    .sparkline { width: 100%; height: 26px; margin-top: 10px; overflow: visible; }
+    .sparkline polyline { fill: none; stroke: var(--accent, #1f7a58); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+    .sparkline path { fill: color-mix(in srgb, var(--accent, #1f7a58) 16%, transparent); }
     .agents { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
     .agent { display: flex; flex-direction: column; gap: 6px; }
     .agent .top { display: flex; align-items: center; gap: 8px; }
@@ -80,6 +84,6 @@
       &nbsp;·&nbsp; auto-refreshing every 3s
     </p>
   </div>
-  <script src="/static/dashboard.js?v=tier3-theme"></script>
+  <script src="/static/dashboard.js?v=tier3-dashboard"></script>
 </body>
 </html>

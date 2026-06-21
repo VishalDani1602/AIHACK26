@@ -76,10 +76,11 @@ cp .env.example .env       # then fill in ASI1_API_KEY, AGENTVERSE_API_KEY, DEEP
 
 # 4. Start all five agents (each in its own process + mailbox)
 ./scripts/run_all.sh
-#    -> tail logs/orchestrator.log for each agent's Inspector link,
-#       open it, and click "Connect -> Mailbox" to register on Agentverse.
 
-# 5. Start the Deepgram voice web app
+# 5. Auto-register every agent's mailbox on Agentverse (no browser clicks)
+./venv/bin/python -m scripts.register_agents
+
+# 6. Start the Deepgram voice web app
 ./venv/bin/uvicorn voice.backend:app --port 8080
 #    -> open http://127.0.0.1:8080  and click "Click to talk"
 ```

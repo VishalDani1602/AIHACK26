@@ -46,6 +46,7 @@ sleep 2
 start orchestrator    agents.orchestrator
 
 echo
-echo "All agents starting. Tail logs for the Agentverse Inspector links:"
-echo "  tail -f $LOGDIR/orchestrator.log"
+echo "All agents starting (logs in ./$LOGDIR)."
+echo "Next: auto-register their mailboxes on Agentverse (no browser needed):"
+echo "  ./venv/bin/python -m scripts.register_agents"
 echo "Stop with: ./scripts/run_all.sh stop"

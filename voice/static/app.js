@@ -9,6 +9,7 @@ const player = document.getElementById("player");
 const textInput = document.getElementById("textInput");
 const sendBtn = document.getElementById("sendBtn");
 const composer = document.querySelector(".composer");
+const meterBars = Array.from(document.querySelectorAll(".voice-meter span"));
 
 let sessionId = "web-" + Math.random().toString(36).slice(2, 10);
 let mediaRecorder = null;
@@ -16,6 +17,10 @@ let chunks = [];
 let recording = false;
 let busy = false;
 let emergencyFocusTimer = null;
+let audioContext = null;
+let analyser = null;
+let meterFrame = null;
+let meterData = null;
 
 const EXAMPLE_PROMPTS = [
   "My dad has a bad cough and fever",
@@ -36,6 +41,20 @@ function addMessage(role, text, opts = {}) {
   return bubble;
 }
 
+function addThinkingBubble() {
+  const wrap = document.createElement("div");
+  wrap.className = "msg bot thinking";
+  wrap.innerHTML = `
+    <div class="bubble">
+      <span>CareLoop is thinking</span>
+      <span class="typing-dots" aria-hidden="true"><span></span><span></span><span></span></span>
+    </div>
+  `;
+  chat.appendChild(wrap);
+  chat.scrollTop = chat.scrollHeight;
+  return wrap;
+}
+
 // Minimal markdown: **bold**, clickable links, and newlines.
 function render(t) {
   const esc = t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -53,21 +72,25 @@ function playAudio(b64) {
   player.play().catch(() => {});
 }
 
-async function sendTurn(promise) {
+async function sendTurn(promise, opts = {}) {
   if (busy) return;
   busy = true;
   micBtn.classList.add("disabled");
+  if (opts.userText) addMessage("user", opts.userText);
+  const thinking = addThinkingBubble();
   try {
     const res = await promise;
     const data = await res.json();
+    thinking.remove();
     if (data.error) { setStatus("Warning: " + data.error); return; }
-    if (data.transcript) addMessage("user", data.transcript);
+    if (data.transcript && data.transcript !== opts.userText) addMessage("user", data.transcript);
     addMessage("bot", data.reply, { emergency: data.emergency });
     setEmergencyFocus(Boolean(data.emergency));
     viaEl.textContent = data.via ? "routed via: " + data.via : "";
     playAudio(data.audio);
     setStatus("");
   } catch (e) {
+    thinking.remove();
     setStatus("Network error: " + e.message);
   } finally {
     busy = false;
@@ -127,7 +150,7 @@ async function sendText() {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ session_id: sessionId, text }),
-  }));
+  }), { userText: text });
 }
 
 sendBtn.onclick = sendText;
@@ -136,11 +159,13 @@ textInput.addEventListener("keydown", (e) => { if (e.key === "Enter") sendText()
 async function startRecording() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    startVoiceMeter(stream);
     mediaRecorder = new MediaRecorder(stream, { mimeType: pickMime() });
     chunks = [];
     mediaRecorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
     mediaRecorder.onstop = async () => {
       stream.getTracks().forEach((t) => t.stop());
+      stopVoiceMeter();
       const blob = new Blob(chunks, { type: mediaRecorder.mimeType });
       setStatus("Transcribing and thinking");
       const lang = langSel.value;
@@ -167,6 +192,48 @@ function stopRecording() {
     micBtn.classList.remove("recording");
     micLabel.textContent = "Speak";
   }
+}
+
+function startVoiceMeter(stream) {
+  stopVoiceMeter();
+  const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextCtor || !meterBars.length) return;
+  try {
+    audioContext = new AudioContextCtor();
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 128;
+    analyser.smoothingTimeConstant = 0.68;
+    meterData = new Uint8Array(analyser.frequencyBinCount);
+    audioContext.createMediaStreamSource(stream).connect(analyser);
+    drawVoiceMeter();
+  } catch (e) {
+    stopVoiceMeter();
+  }
+}
+
+function drawVoiceMeter() {
+  if (!analyser || !meterData) return;
+  analyser.getByteFrequencyData(meterData);
+  const bandSize = Math.max(1, Math.floor(meterData.length / meterBars.length));
+  meterBars.forEach((bar, index) => {
+    const start = index * bandSize;
+    const end = Math.min(meterData.length, start + bandSize);
+    let total = 0;
+    for (let i = start; i < end; i += 1) total += meterData[i];
+    const level = total / Math.max(1, end - start) / 255;
+    bar.style.transform = `scaleY(${Math.max(0.18, Math.min(1, level * 1.8))})`;
+  });
+  meterFrame = requestAnimationFrame(drawVoiceMeter);
+}
+
+function stopVoiceMeter() {
+  if (meterFrame) cancelAnimationFrame(meterFrame);
+  meterFrame = null;
+  meterBars.forEach((bar) => { bar.style.transform = ""; });
+  if (audioContext) audioContext.close().catch(() => {});
+  audioContext = null;
+  analyser = null;
+  meterData = null;
 }
 
 function pickMime() {

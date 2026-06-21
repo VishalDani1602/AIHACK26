@@ -386,3 +386,32 @@ footer {
     min-height: 40px;
   }
 }
+
+/* nav button: switch between chat ( / ) and dashboard ( /dashboard ) */
+.navbtn {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  border: 1px solid var(--line-strong, #b8c5be);
+  border-radius: var(--radius, 8px);
+  background: var(--paper, #fff);
+  color: var(--ink, #18211c);
+  font-size: 13px;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.navbtn:hover {
+  border-color: var(--accent, #1f7a58);
+  color: var(--accent, #1f7a58);
+}
+
+@media (max-width: 680px) {
+  .controls .navbtn {
+    grid-column: 1;
+    grid-row: 1;
+  }
+}

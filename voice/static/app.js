@@ -8,19 +8,21 @@ const langSel = document.getElementById("lang");
 const player = document.getElementById("player");
 const textInput = document.getElementById("textInput");
 const sendBtn = document.getElementById("sendBtn");
+const composer = document.querySelector(".composer");
 
 let sessionId = "web-" + Math.random().toString(36).slice(2, 10);
 let mediaRecorder = null;
 let chunks = [];
 let recording = false;
 let busy = false;
+let emergencyFocusTimer = null;
 
 function addMessage(role, text, opts = {}) {
   const wrap = document.createElement("div");
   wrap.className = "msg " + role + (opts.emergency ? " emergency" : "");
   const bubble = document.createElement("div");
   bubble.className = "bubble";
-  bubble.innerHTML = render(text);
+  bubble.innerHTML = opts.emergency ? renderEmergency(text) : render(text);
   wrap.appendChild(bubble);
   chat.appendChild(wrap);
   chat.scrollTop = chat.scrollHeight;
@@ -54,6 +56,7 @@ async function sendTurn(promise) {
     if (data.error) { setStatus("Warning: " + data.error); return; }
     if (data.transcript) addMessage("user", data.transcript);
     addMessage("bot", data.reply, { emergency: data.emergency });
+    setEmergencyFocus(Boolean(data.emergency));
     viaEl.textContent = data.via ? "routed via: " + data.via : "";
     playAudio(data.audio);
     setStatus("");
@@ -62,6 +65,30 @@ async function sendTurn(promise) {
   } finally {
     busy = false;
     micBtn.classList.remove("disabled");
+  }
+}
+
+function renderEmergency(text) {
+  return `
+    <section class="emergency-card" role="alert" aria-label="Emergency guidance">
+      <div class="emergency-mark" aria-hidden="true">!</div>
+      <div class="emergency-copy">
+        <h2>Emergency care now</h2>
+        <p>If this is happening now, call emergency services immediately.</p>
+        <div class="emergency-detail">${render(text)}</div>
+        <a class="call911" href="tel:911">Call 911</a>
+      </div>
+    </section>
+  `;
+}
+
+function setEmergencyFocus(active) {
+  if (emergencyFocusTimer) clearTimeout(emergencyFocusTimer);
+  composer.classList.toggle("composer-emergency", active);
+  if (active) {
+    emergencyFocusTimer = setTimeout(() => {
+      composer.classList.remove("composer-emergency");
+    }, 8000);
   }
 }
 
@@ -134,6 +161,7 @@ const GREETING_HTML =
 
 function resetChat() {
   if (recording) stopRecording();
+  setEmergencyFocus(false);
   sessionId = "web-" + Math.random().toString(36).slice(2, 10);
   chat.innerHTML = "";
   const wrap = document.createElement("div");

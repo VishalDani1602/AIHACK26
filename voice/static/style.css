@@ -168,10 +168,77 @@ h1 {
   border-color: var(--patient-line);
 }
 
+.msg.bot.emergency {
+  width: 100%;
+}
+
 .msg.bot.emergency .bubble {
+  width: 100%;
+  max-width: none;
+  padding: 0;
   background: var(--emergency-soft);
-  border-color: #f0afa8;
+  border-color: #efaca4;
   color: #6d1a14;
+  overflow: hidden;
+}
+
+.emergency-card {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 14px;
+  padding: 16px;
+}
+
+.emergency-mark {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius);
+  background: var(--emergency);
+  color: #ffffff;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.emergency-copy h2 {
+  margin: 0;
+  color: #6d1a14;
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.emergency-copy p {
+  margin: 5px 0 0;
+  color: #7d2a22;
+}
+
+.emergency-detail {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #efaca4;
+  color: #6d1a14;
+}
+
+.call911 {
+  min-height: 44px;
+  margin-top: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 18px;
+  border: 1px solid var(--emergency);
+  border-radius: var(--radius);
+  background: var(--emergency);
+  color: #ffffff;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.call911:focus-visible {
+  outline: 3px solid #ffd7d2;
+  outline-offset: 2px;
 }
 
 .bubble .note {
@@ -188,6 +255,12 @@ h1 {
   flex-direction: column;
   gap: 10px;
   align-items: stretch;
+}
+
+.composer.composer-emergency {
+  opacity: .38;
+  pointer-events: none;
+  transition: opacity .2s ease;
 }
 
 .mic {

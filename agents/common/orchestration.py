@@ -143,6 +143,14 @@ def _llm_extract(state: Dict, text: str) -> str:
 # --------------------------------------------------------------------------- #
 async def handle_turn(state: Dict, user_text: str, specialists: Specialists) -> Dict:
     session_id = state.get("session_id", "session")
+
+    # A finished request (booking done, or an emergency hand-off) is terminal — the
+    # next message starts a fresh request instead of carrying over old symptoms.
+    if state.get("stage") in ("done", "emergency"):
+        state.clear()
+        state.update(new_state())
+        state["session_id"] = session_id
+
     intent = _llm_extract(state, user_text) if asi.have_llm() else _naive_extract(state, user_text)
 
     # Robust override: in a yes/no stage, an explicit affirmation/decline wins over the LLM's guess.

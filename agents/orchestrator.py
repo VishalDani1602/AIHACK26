@@ -132,13 +132,21 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
             is_start = True
     text = " ".join(text_parts).strip()
 
-    if is_start and not text:
-        await _send_chat(ctx, sender, GREETING)
-        return
+    state = load_state(ctx, sender)
+
+    # New ASI:One chat (start-session marker) -> wipe any prior state for this sender,
+    # so closing a chat and opening a new one always starts clean.
+    if is_start:
+        state = new_state()
+        state["session_id"] = sender
+        save_state(ctx, sender, state)
+        if not text:
+            await _send_chat(ctx, sender, GREETING)
+            return
+
     if not text:
         return
 
-    state = load_state(ctx, sender)
     out = await handle_turn(state, text, AgentSpecialists(ctx))
     save_state(ctx, sender, state)
     await _send_chat(ctx, sender, out["reply"], end=out["stage"] in ("done", "emergency"))

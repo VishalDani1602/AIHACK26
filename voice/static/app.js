@@ -9,7 +9,7 @@ const player = document.getElementById("player");
 const textInput = document.getElementById("textInput");
 const sendBtn = document.getElementById("sendBtn");
 
-const sessionId = "web-" + Math.random().toString(36).slice(2, 10);
+let sessionId = "web-" + Math.random().toString(36).slice(2, 10);
 let mediaRecorder = null;
 let chunks = [];
 let recording = false;
@@ -126,6 +126,26 @@ micBtn.onclick = () => {
   if (busy) return;
   recording ? stopRecording() : startRecording();
 };
+
+// New chat: fresh session id (server keys state by session, so this fully resets) + clear UI.
+const GREETING_HTML =
+  "Hi, I'm <b>CareLoop</b>. Tell me what's going on and I'll help you find and book care — " +
+  'for example, <i>"my dad has had a bad cough and fever for five days, he\'s on Medicare in Berkeley."</i>' +
+  '<div class="note">Not medical advice. For an emergency, call 911.</div>';
+
+function resetChat() {
+  if (recording) stopRecording();
+  sessionId = "web-" + Math.random().toString(36).slice(2, 10);
+  chat.innerHTML = "";
+  const wrap = document.createElement("div");
+  wrap.className = "msg bot";
+  wrap.innerHTML = '<div class="bubble">' + GREETING_HTML + "</div>";
+  chat.appendChild(wrap);
+  setStatus("New conversation started.");
+  viaEl.textContent = "";
+  textInput.value = "";
+}
+document.getElementById("newChat").onclick = resetChat;
 
 // Surface backend config on load (helps during the demo).
 fetch("/api/health").then((r) => r.json()).then((h) => {

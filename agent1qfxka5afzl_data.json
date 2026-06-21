@@ -142,7 +142,7 @@
         "session_id": "voice:web-b2gboby4"
     },
     "agent1qtxva8p8rt4jeds9ncv84nz0gn5qguemsp69ntnvdfta50eaqxf3v0gfr2s": {
-        "stage": "done",
+        "stage": "confirming",
         "symptoms": "fever and cold for 3 days",
         "patient_age": null,
         "patient_name": "",
@@ -287,5 +287,36 @@
         "skip_payment": false,
         "deposit_paid": 0.0,
         "session_id": "voice:rds3"
+    },
+    "voice:resettest": {
+        "stage": "confirming",
+        "symptoms": "mild itchy rash on my arm",
+        "patient_age": null,
+        "patient_name": "",
+        "city": "Berkeley",
+        "state": "CA",
+        "postal_code": "",
+        "insurance": "medicare",
+        "specialty": "Dermatology",
+        "taxonomy": "Dermatology",
+        "pending": {
+            "provider": {
+                "name": "Allskin Dermatology",
+                "specialty": "Dermatology",
+                "address": "2828 TELEGRAPH AVE, BERKELEY, CA, 94705",
+                "phone": "510-848-8404",
+                "accepts_insurance": true,
+                "next_slot": "tomorrow at 9:00 AM",
+                "npi": "1902908197"
+            },
+            "cost_low": 210.0,
+            "cost_high": 301.0,
+            "cost_why": "With Medicare (≈$240 deductible left, 20% coinsurance), a specialist visit (≈$350 billed) would land around $210-$301.",
+            "visit_type": "specialist"
+        },
+        "payment": null,
+        "skip_payment": false,
+        "deposit_paid": 0.0,
+        "session_id": "voice:resettest"
     }
 }

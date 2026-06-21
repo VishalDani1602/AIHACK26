@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CareLoop — Voice Healthcare Concierge</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="brand">
+        <span class="logo">⊕</span>
+        <div>
+          <h1>CareLoop</h1>
+          <p class="tag">Voice-first healthcare concierge · powered by Fetch.ai agents + Deepgram</p>
+        </div>
+      </div>
+      <div class="controls">
+        <label for="lang">Language</label>
+        <select id="lang" title="Deepgram Nova-3 multilingual">
+          <option value="multi" selected>Auto (multilingual)</option>
+          <option value="en">English</option>
+          <option value="es">Spanish</option>
+          <option value="zh">Chinese</option>
+          <option value="hi">Hindi</option>
+          <option value="fr">French</option>
+        </select>
+      </div>
+    </header>
+
+    <div id="chat" class="chat">
+      <div class="msg bot">
+        <div class="bubble">
+          Hi, I'm <b>CareLoop</b>. I help you find and book care. Tell me what's going on —
+          for example, <i>"my dad has had a bad cough and fever for five days, he's on Medicare in Berkeley."</i>
+          <div class="note">Not medical advice. For an emergency, call 911.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="composer">
+      <button id="mic" class="mic" title="Click to talk">
+        <span class="mic-icon">🎙️</span>
+        <span class="mic-label">Click to talk</span>
+      </button>
+      <div class="text-row">
+        <input id="textInput" type="text" placeholder="…or type your message and press Enter" />
+        <button id="sendBtn">Send</button>
+      </div>
+    </div>
+
+    <div id="status" class="status"></div>
+    <footer>
+      <span id="via" class="via"></span>
+      <span class="legal">CareLoop is a navigation aid, not a medical provider. Provider data: CMS NPPES.</span>
+    </footer>
+  </div>
+
+  <audio id="player" hidden></audio>
+  <script src="/static/app.js"></script>
+</body>
+</html>

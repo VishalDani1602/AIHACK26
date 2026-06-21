@@ -26,8 +26,20 @@ let audioContext = null;
 let analyser = null;
 let meterFrame = null;
 let meterData = null;
+let lastDetectedLanguage = null;
 const DISPLAY_PREF_KEY = "careloopDisplayPrefs";
 const displayPrefs = readDisplayPrefs();
+
+const LANGUAGE_LABELS = {
+  ar: "Arabic",
+  en: "English",
+  es: "Spanish",
+  fr: "French",
+  he: "Hebrew",
+  hi: "Hindi",
+  zh: "Chinese",
+};
+const RTL_TEXT = /[\u0590-\u08ff]/;
 
 const EXAMPLE_PROMPTS = [
   "My dad has a bad cough and fever",
@@ -38,10 +50,14 @@ const EXAMPLE_PROMPTS = [
 
 function addMessage(role, text, opts = {}) {
   const wrap = document.createElement("div");
-  wrap.className = "msg " + role + (opts.emergency ? " emergency" : "");
+  const language = opts.language || null;
+  const isRtl = RTL_TEXT.test(text) || (role === "user" && language?.dir === "rtl");
+  wrap.className = "msg " + role + (opts.emergency ? " emergency" : "") + (isRtl ? " rtl" : "");
   const bubble = document.createElement("div");
   bubble.className = "bubble" + (opts.rich ? " rich-bubble" : "");
-  bubble.innerHTML = opts.emergency ? renderEmergency(text) : renderMessageBody(text, opts);
+  if (language?.code) bubble.setAttribute("lang", language.code);
+  if (isRtl) bubble.setAttribute("dir", "rtl");
+  bubble.innerHTML = opts.emergency ? renderEmergency(text, language) : renderMessageBody(text, opts);
   wrap.appendChild(bubble);
   chat.appendChild(wrap);
   scrollChatToEnd();
@@ -72,11 +88,12 @@ function render(t) {
 }
 
 function renderMessageBody(text, opts = {}) {
+  const languageHtml = opts.language ? renderLanguageChip(opts.language) : "";
   const cardsHtml = opts.cards?.length ? `<div class="card-stack">${opts.cards.map(renderCard).join("")}</div>` : "";
   const actionsHtml = opts.actions?.length ? renderActions(opts.actions) : "";
-  if (!cardsHtml && !actionsHtml) return render(text);
+  if (!cardsHtml && !actionsHtml) return `${languageHtml}${render(text)}`;
   const summary = cardsHtml ? `<details class="reply-details"><summary>Conversation note</summary>${render(text)}</details>` : render(text);
-  return `${summary}${cardsHtml}${actionsHtml}`;
+  return `${languageHtml}${summary}${cardsHtml}${actionsHtml}`;
 }
 
 function setStatus(s) { statusEl.textContent = s; }
@@ -100,14 +117,20 @@ async function sendTurn(promise, opts = {}) {
   if (busy) return;
   busy = true;
   micBtn.classList.add("disabled");
-  if (opts.userText) addMessage("user", opts.userText);
+  if (opts.userText) {
+    lastDetectedLanguage = detectLanguage(opts.userText, langSel.value);
+    addMessage("user", opts.userText, { language: lastDetectedLanguage });
+  }
   const thinking = addThinkingBubble();
   try {
     const res = await promise;
     const data = await res.json();
     thinking.remove();
     if (data.error) { setStatus("Warning: " + data.error); return; }
-    if (data.transcript && data.transcript !== opts.userText) addMessage("user", data.transcript);
+    if (data.transcript && data.transcript !== opts.userText) {
+      lastDetectedLanguage = detectLanguage(data.transcript, langSel.value);
+      addMessage("user", data.transcript, { language: lastDetectedLanguage });
+    }
     addBotReply(data);
     setEmergencyFocus(Boolean(data.emergency));
     viaEl.textContent = data.via ? "routed via: " + data.via : "";
@@ -124,20 +147,22 @@ async function sendTurn(promise, opts = {}) {
 
 function addBotReply(data) {
   announceBotReply(data.reply);
+  const language = data.language ? normalizeLanguage(data.language) : lastDetectedLanguage;
   if (data.emergency) {
-    addMessage("bot", data.reply, { emergency: true });
+    addMessage("bot", data.reply, { emergency: true, language });
     return;
   }
   const cards = collectCards(data);
   const actions = normalizeActions(data.actions) || inferActions(data, cards);
-  addMessage("bot", data.reply, { cards, actions, rich: Boolean(cards.length || actions.length) });
+  addMessage("bot", data.reply, { cards, actions, rich: Boolean(cards.length || actions.length), language });
 }
 
-function renderEmergency(text) {
+function renderEmergency(text, language) {
   return `
     <section class="emergency-card" role="alert" aria-label="Emergency guidance">
       <div class="emergency-mark" aria-hidden="true">!</div>
       <div class="emergency-copy">
+        ${language ? renderLanguageChip(language) : ""}
         <h2>Emergency care now</h2>
         <p>If this is happening now, call emergency services immediately.</p>
         <div class="emergency-detail">${render(text)}</div>
@@ -145,6 +170,11 @@ function renderEmergency(text) {
       </div>
     </section>
   `;
+}
+
+function renderLanguageChip(language) {
+  if (!language?.label) return "";
+  return `<div class="language-chip" aria-label="Detected language">${escapeHtml(language.label)}</div>`;
 }
 
 function collectCards(data) {
@@ -409,6 +439,27 @@ function toggleDisplayPref(key) {
   displayPrefs[key] = !displayPrefs[key];
   saveDisplayPrefs();
   applyDisplayPrefs();
+}
+
+function detectLanguage(text, selected = "multi") {
+  const normalizedSelected = selected === "multi" ? "" : selected;
+  if (/[\u0600-\u06ff]/.test(text)) return normalizeLanguage("ar");
+  if (/[\u0590-\u05ff]/.test(text)) return normalizeLanguage("he");
+  if (/[\u4e00-\u9fff]/.test(text)) return normalizeLanguage("zh");
+  if (/[\u0900-\u097f]/.test(text)) return normalizeLanguage("hi");
+  if (/[ñáéíóúü¿¡]|\b(hola|necesito|dolor|fiebre|seguro|cita|medico|médico)\b/i.test(text)) return normalizeLanguage("es");
+  if (/[àâçéèêëîïôûùüÿœ]|\b(bonjour|douleur|fièvre|assurance|rendez-vous)\b/i.test(text)) return normalizeLanguage("fr");
+  return normalizeLanguage(normalizedSelected || "en");
+}
+
+function normalizeLanguage(language) {
+  const code = typeof language === "string" ? language : language?.code;
+  const cleanCode = (code || "en").toLowerCase().split("-")[0];
+  return {
+    code: LANGUAGE_LABELS[cleanCode] ? cleanCode : "en",
+    label: LANGUAGE_LABELS[cleanCode] || LANGUAGE_LABELS.en,
+    dir: cleanCode === "ar" || cleanCode === "he" ? "rtl" : "ltr",
+  };
 }
 
 function plainText(value) {

@@ -290,6 +290,39 @@ h1 {
   justify-content: flex-end;
 }
 
+.msg.rtl .bubble {
+  direction: rtl;
+  text-align: right;
+}
+
+.msg.rtl .card-rows,
+.msg.rtl .quick-actions,
+.msg.rtl .trial-meta {
+  direction: ltr;
+  text-align: left;
+}
+
+.language-chip {
+  width: max-content;
+  max-width: 100%;
+  min-height: 24px;
+  margin-bottom: var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: var(--text-xs);
+  font-weight: 800;
+}
+
+.msg.rtl .language-chip {
+  margin-left: 0;
+  margin-right: auto;
+}
+
 .msg.thinking .bubble {
   max-width: max-content;
   display: inline-flex;

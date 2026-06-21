@@ -1,0 +1,17 @@
+{
+  "_comment": "Illustrative out-of-pocket model for the demo. NOT real plan data. The estimator combines an average billed amount per visit type with simplified plan cost-sharing to produce a range. Always presented to the user as an estimate.",
+  "visit_base_cost": {
+    "primary_care": 180,
+    "urgent_care":  240,
+    "specialist":   350,
+    "er":           1800
+  },
+  "plans": {
+    "medicare":     {"label": "Medicare",            "copay": 0,   "coinsurance": 0.20, "deductible_remaining": 240},
+    "medicaid":     {"label": "Medicaid / Medi-Cal", "copay": 0,   "coinsurance": 0.00, "deductible_remaining": 0},
+    "ppo":          {"label": "Commercial PPO",      "copay": 30,  "coinsurance": 0.20, "deductible_remaining": 500},
+    "hmo":          {"label": "Commercial HMO",      "copay": 25,  "coinsurance": 0.10, "deductible_remaining": 250},
+    "high_deductible": {"label": "High-deductible",  "copay": 0,   "coinsurance": 0.30, "deductible_remaining": 1500},
+    "uninsured":    {"label": "Uninsured (self-pay)","copay": 0,   "coinsurance": 1.00, "deductible_remaining": 0}
+  }
+}

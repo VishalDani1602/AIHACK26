@@ -1,0 +1,12 @@
+# CareLoop — voice-first multi-agent healthcare-access concierge
+# Fetch.ai uAgents + ASI:One + Deepgram voice
+
+uagents>=0.22.0
+uagents-core>=0.1.0
+openai>=1.30.0          # OpenAI-compatible client, pointed at ASI:One (api.asi1.ai/v1)
+deepgram-sdk>=3.5.0     # STT (Nova-3) + TTS (Aura-2)
+fastapi>=0.110.0        # voice web app backend
+uvicorn[standard]>=0.29.0
+requests>=2.31.0        # NPPES provider lookup
+python-dotenv>=1.0.0
+websockets>=12.0

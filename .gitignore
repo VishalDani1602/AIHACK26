@@ -1,0 +1,26 @@
+# secrets / env
+.env
+.env.local
+*.key
+
+# python
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+
+# agent / runtime artifacts
+*.log
+agent_data/
+*.ics
+audio_tmp/
+*.wav
+*.mp3
+
+# os / editor
+.DS_Store
+.idea/
+.vscode/

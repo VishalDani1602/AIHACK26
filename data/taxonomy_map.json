@@ -1,0 +1,18 @@
+{
+  "_comment": "Maps a human-friendly specialty (chosen by the triage agent) to the NPPES taxonomy_description string used for the provider search, plus the cost 'visit_type' bucket.",
+  "Primary Care":        {"taxonomy": "Family Medicine",            "visit_type": "primary_care"},
+  "Internal Medicine":   {"taxonomy": "Internal Medicine",          "visit_type": "primary_care"},
+  "Pediatrics":          {"taxonomy": "Pediatrics",                 "visit_type": "primary_care"},
+  "Urgent Care":         {"taxonomy": "Urgent Care",                "visit_type": "urgent_care"},
+  "Cardiology":          {"taxonomy": "Cardiovascular Disease",     "visit_type": "specialist"},
+  "Dermatology":         {"taxonomy": "Dermatology",                "visit_type": "specialist"},
+  "Orthopedics":         {"taxonomy": "Orthopaedic Surgery",        "visit_type": "specialist"},
+  "Psychiatry":          {"taxonomy": "Psychiatry",                 "visit_type": "specialist"},
+  "OB-GYN":              {"taxonomy": "Obstetrics & Gynecology",    "visit_type": "specialist"},
+  "ENT":                 {"taxonomy": "Otolaryngology",             "visit_type": "specialist"},
+  "Gastroenterology":    {"taxonomy": "Gastroenterology",           "visit_type": "specialist"},
+  "Pulmonology":         {"taxonomy": "Pulmonary Disease",          "visit_type": "specialist"},
+  "Neurology":           {"taxonomy": "Neurology",                  "visit_type": "specialist"},
+  "Ophthalmology":       {"taxonomy": "Ophthalmology",              "visit_type": "specialist"},
+  "Dentistry":           {"taxonomy": "Dentist",                    "visit_type": "specialist"}
+}
